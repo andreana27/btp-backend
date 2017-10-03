@@ -1,0 +1,13 @@
+*.pyc
+*.bak
+*~
+cache/
+databases/*
+errors/
+sessions/
+private/
+uploads/*
+progress.log
+*.1
+*.orig
+
