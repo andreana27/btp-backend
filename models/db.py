@@ -93,6 +93,18 @@ db.define_table('contact',
                Field('lastName', 'string'),
                Field('email', 'string'),
                Field('phoneNumber', 'string'))
+db.define_table('bot',
+                Field('name','string'),
+                Field('enabled','string'),
+                Field('picture','string'),
+                Field('messages','string'),
+                Field('users','string'),
+                Field('datos','string'))
+
+db.define_table('bot_context',
+                Field('bot_id', 'references bot'),
+                Field('name', 'string'),
+                Field('context_json', 'string'))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
