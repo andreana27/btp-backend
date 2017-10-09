@@ -93,17 +93,16 @@ db.define_table('contact',
                Field('lastName', 'string'),
                Field('email', 'string'),
                Field('phoneNumber', 'string'))
+
 db.define_table('bot',
                 Field('name','string'),
-                Field('enabled','string'),
-                Field('picture','string'),
-                Field('messages','string'),
-                Field('users','string'),
-                Field('datos','string'))
+                Field('enabled','boolean',default=True ),
+                Field('picture','string'))
 
 db.define_table('bot_context',
                 Field('bot_id', 'references bot'),
                 Field('name', 'string'),
+                Field('context_content', 'text'),
                 Field('context_json', 'string'))
 
 ## after defining tables, uncomment below to enable auditing
