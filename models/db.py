@@ -102,7 +102,6 @@ db.define_table('bot',
 db.define_table('bot_context',
                 Field('bot_id', 'references bot'),
                 Field('name', 'string'),
-                Field('context_content', 'text'),
                 Field('context_json', 'string'))
 
 ## after defining tables, uncomment below to enable auditing
