@@ -202,6 +202,7 @@
 'Invalid action': 'Acción inválida',
 'Invalid email': 'Correo electrónico inválido',
 'invalid expression': 'expresión inválida',
+'Invalid json': 'Invalid json',
 'Invalid login': 'Inicio de sesión inválido',
 'invalid password': 'contraseña inválida',
 'Invalid Query': 'Consulta inválida',

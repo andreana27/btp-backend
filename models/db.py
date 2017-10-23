@@ -97,12 +97,26 @@ db.define_table('contact',
 db.define_table('bot',
                 Field('name','string'),
                 Field('enabled','boolean',default=True ),
-                Field('picture','string'))
+                Field('picture','string'),
+                Field('connectors', 'json'))
+
+db.define_table('bot_storage',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('storage_key', 'string'),
+                Field('storage_value', 'string'))
+
+db.define_table('bot_internal_storage',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('storage_key', 'string'),
+                Field('storage_value', 'string'))
 
 db.define_table('bot_context',
-                Field('bot_id', 'references bot'),
+                Field('bot_id', 'reference bot'),
+                Field('parent_context', 'reference bot_context', readable = False, writable = False),
                 Field('name', 'string'),
-                Field('context_json', 'string'))
+                Field('context_json', 'json'))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

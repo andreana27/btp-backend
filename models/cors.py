@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 def cors_origin():
-    origin = 'http://localhost:9000'
+    origin = 'http://au.innovare.es'
     headers = {}
     headers['Access-Control-Allow-Origin'] = origin
 
