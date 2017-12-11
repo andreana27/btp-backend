@@ -19,8 +19,9 @@ def index():
     response.flash = T("Hello World")
     return dict(message=T('Welcome to web2py!'))
 
-
+@cors_allow
 def user():
+    response.view = 'generic.' + request.extension
     """
     exposes:
     http://..../[app]/default/user/login
@@ -56,5 +57,3 @@ def call():
     supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
     """
     return service()
-
-

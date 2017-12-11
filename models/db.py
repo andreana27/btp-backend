@@ -54,6 +54,9 @@ response.form_label_separator = myconf.take('forms.separator')
 from gluon.tools import Auth, Service, PluginManager
 
 auth = Auth(db)
+auth.settings.extra_fields['auth_user']= [
+  Field('api_token', 'string'),
+  Field('token_datetime', 'datetime')]
 service = Service()
 plugins = PluginManager()
 
@@ -93,12 +96,16 @@ db.define_table('contact',
                Field('lastName', 'string'),
                Field('email', 'string'),
                Field('phoneNumber', 'string'))
-
+import os
 db.define_table('bot',
                 Field('name','string'),
                 Field('enabled','boolean',default=True ),
-                Field('picture','string'),
+                Field('picture','upload', default = os.path.join(request.folder, 'static', 'images', 'bot_avatar.png')),
                 Field('connectors', 'json'))
+#bot default image
+#import os
+#db.bot.picture.default = os.path.join(request.folder, 'static', 'images', 'bot-avatar.png')
+
 
 db.define_table('bot_storage',
                 Field('bot_id', 'reference bot'),
@@ -114,9 +121,16 @@ db.define_table('bot_internal_storage',
 
 db.define_table('bot_context',
                 Field('bot_id', 'reference bot'),
-                Field('parent_context', 'reference bot_context', readable = False, writable = False),
+                Field('parent_context', 'reference bot_context'),
+                Field('isdefault', 'boolean', default = False),
                 Field('name', 'string'),
                 Field('context_json', 'json'))
+
+db.define_table('conversation',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('ctype', 'string'),
+                Field('ccontent', 'text'))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

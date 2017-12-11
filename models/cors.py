@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 def cors_origin():
-    origin = 'http://au.innovare.es'
+    allowed_origins = {'http://au.innovare.es':'http://au.innovare.es',
+                       'http://a1.botprotec.com':'http://a1.botprotec.com',
+                       'http://localhost:9000':'http://localhost:9000',
+                       'https://demo.botprotec.com':'https://demo.botprotec.com'}
+    o = "%s" %(request.env['HTTP_ORIGIN'])
+    origin = allowed_origins.get(o)
     headers = {}
     headers['Access-Control-Allow-Origin'] = origin
 
-    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS, POST, HEAD, PUT'
+    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS, POST, HEAD, PUT, DELETE'
     headers['Access-Control-Allow-Headers'] = 'DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization,Accept'
     headers['Access-Control-Allow-Credentials'] = 'true';
     response.headers.update(headers)
