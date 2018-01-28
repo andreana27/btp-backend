@@ -3,7 +3,8 @@ def cors_origin():
     allowed_origins = {'http://au.innovare.es':'http://au.innovare.es',
                        'http://a1.botprotec.com':'http://a1.botprotec.com',
                        'http://localhost:9000':'http://localhost:9000',
-                       'https://demo.botprotec.com':'https://demo.botprotec.com'}
+                       'https://demo.botprotec.com':'https://demo.botprotec.com',
+                       'http://localhost:9090': 'http://localhost:9090'}
     o = "%s" %(request.env['HTTP_ORIGIN'])
     origin = allowed_origins.get(o)
     headers = {}
