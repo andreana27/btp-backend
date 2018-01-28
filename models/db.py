@@ -130,7 +130,22 @@ db.define_table('conversation',
                 Field('bot_id', 'reference bot'),
                 Field('storage_owner', 'string'),
                 Field('ctype', 'string'),
-                Field('ccontent', 'text'))
+                Field('ccontent', 'text'),
+                Field('message_date', 'date'),
+                Field('message_time', 'time'),
+                Field('origin', 'string'),
+                Field('medium', 'string'),
+               Field('content_type', 'string'))
+
+db.define_table('website_token',
+                Field('bot_id', 'reference bot'),
+                Field('website', 'string'),
+                Field('token', 'string'))
+
+db.define_table('bot_intent',
+                Field('bot_id', 'reference bot'),
+                Field('context_id', 'reference bot_context'),
+                Field('name', 'string'))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
