@@ -39,7 +39,7 @@
     //---------------------------
     //setup variables
     //var server = '//192.168.0.30:9090';
-    var server ='https://developer.innovare.es/backend/static/_2.16.1/widget/';
+    var server ='https://developer.innovare.es/backend/static/widget/';
     var botName = document.getElementById("chat-widget-container").getAttribute("botName");
     var botId = document.getElementById("chat-widget-container").getAttribute("botId");
     var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
@@ -106,14 +106,12 @@
         var cssId = 'botprowidgetcss';  // you could encode the css path itself to generate id..
         if (!document.getElementById(cssId))
         {
-
             var head  = document.getElementsByTagName('head')[0];
             var link  = document.createElement('link');
             link.id   = cssId;
             link.rel  = 'stylesheet';
             link.type = 'text/css';
             link.href =  server + 'css/ChatWidget.css';
-            //link.href = '//192.168.1.14:9090/static/stylesheets/ChatWidget.css';
             link.media = 'all';
             head.appendChild(link);
         }
@@ -166,14 +164,16 @@
       }//END CreateSampleStructure
 
       function CreateChatBox() {
-        var style = 'width:'+ width +'px; height:'+ height +'px';
+        var style = 'width:'+ width +'px; height:auto;';
+        style += "position: fixed;    right: 10px;    bottom: 50px;";
+        style += "z-index: 999999;    overflow: hidden;    box-shadow: black 0 0 34px;    background-color: white;";
         document.getElementById('chat-widget-container').setAttribute("style",style);
         HTMLString = '';
 
         HTMLString = '<div class="content">';
-        HTMLString += '<div class="row">';
-        HTMLString += '<div class="col-sm-12">';
-        HTMLString += '<div class="chatContainer" id="chatContainer">';//chat container
+        HTMLString += '<div>';
+        HTMLString += '<div>';
+        HTMLString += '<div class="chatContainer container-fluid" id="chatContainer">';//chat container
 
         //CHAT BOX
         //---------------------
@@ -204,18 +204,14 @@
         //REPLY BOX
         //---------------------
         HTMLString += '<div class="row">';
+        HTMLString += '<div id="replybox" class="replybox" style="min-height:50px;padding:5px;">';
         HTMLString += '<div class="col-sm-12">';
-        HTMLString += '<div id="replybox" class="replybox" style="height:50px;>';
-        HTMLString += '<div class="row">';
-        HTMLString += '<div class="col-sm-9">';
-        HTMLString += '<input type="text" class="form-control" id="txtResponse">';
-        HTMLString += '</div>';//end col-10
-        HTMLString += '<div class="col-sm-2">';
-        HTMLString += '<button id="btnReply" class="btn btn-success" name="btnReply">Send</button>';
-        HTMLString += '</div>';//end col-2
-        HTMLString += '</div>';//end row
-        HTMLString += '</div>';//end replybox
+        HTMLString += '<form class="form-inline" onsubmit="return false;">';
+        HTMLString += '<input type="text" class="form-control input-sm" id="txtResponse" onkeypress="return function(e){if (e.keyCode == 13){$(\'#btnReply\')[0].click()}}(event);">';
+        HTMLString += '<a id="btnReply" class="btn btn-success btn-sm" name="btnReply">Send</a>';
+        HTMLString += '</form>';
         HTMLString += '</div>';//end col-sm-12
+        HTMLString += '</div>';//end replybox
         HTMLString += '</div>';//end row
         //---------------------
         //REPLY BOX
@@ -232,13 +228,11 @@
       function CreateHelloBox() {
         try{
           var htmlCode = '';
-          htmlCode += '<div class="row">';
-          htmlCode += '<div class="col-sm-9">';
-          htmlCode += '<input type="text" class="form-control" placeHolder="Enter your employee ID" id="txtHello">';
-          htmlCode += '</div>';//end col-10
-          htmlCode += '<div class="col-sm-2">';
-          htmlCode += '<button id="btnStart" class="btn btn-success" name="btnStart">Start</button>';
-          htmlCode += '</div>';//end col-2
+          htmlCode += '<div class="col-sm-12">';
+          htmlCode += '<form class="form-inline" onsubmit="return false;">';
+          htmlCode += '<input type="text" class="form-control input-sm" placeHolder="Enter your employee ID" id="txtHello" onkeypress="return function(e){if (e.keyCode == 13){$(\'#btnStart\')[0].click()}}(event);">';
+          htmlCode += '<a id="btnStart" class="btn btn-success btn-sm" name="btnStart">Start</a>';
+          htmlCode += '</form>';
           htmlCode += '</div>';//end row
           document.getElementById("replybox").innerHTML = htmlCode;
           btnStart.addEventListener("click", setUserName, false);
@@ -262,6 +256,7 @@
             document.getElementById('txtHello').value = '';
             //setting the default view
             restoreReplyButton();
+            document.getElementById('txtResponse').focus();
           }
         }
         catch(err) {
@@ -297,16 +292,16 @@
 
       function restoreReplyButton() {
         var htmlCode = '';
-        htmlCode += '<div class="row">';
-        htmlCode += '<div class="col-sm-9">';
-        htmlCode += '<input type="text" class="form-control" id="txtResponse">';
-        htmlCode += '</div>';//end col-10
-        htmlCode += '<div class="col-sm-2">';
-        htmlCode += '<button id="btnReply" class="btn btn-success" name="btnReply">Send</button>';
-        htmlCode += '</div>';//end col-2
-        htmlCode += '</div>';//end row
+        htmlCode += '<div class="col-sm-12">';
+        htmlCode += '<form class="form-inline" onsubmit="return false;">';
+        htmlCode += '<input type="text" class="form-control input-sm" id="txtResponse" onkeypress="return function(e){if (e.keyCode == 13){$(\'#btnReply\')[0].click()}}(event);">';
+        htmlCode += '<a id="btnReply" class="btn btn-success btn-sm" name="btnReply">Send</a>';
+        htmlCode += '</form>';
+        htmlCode += '</div>';//end col-sm-12
         document.getElementById("replybox").innerHTML = htmlCode;
+        document.getElementById("txtResponse").focus();
         btnReply.addEventListener("click", SendMessage, false);
+        console.log('done');
       }
 
       //Function that replys to the backend
@@ -353,31 +348,11 @@
             var btnWidth = Math.round(12/items);
             var htmlCode = '';
             var position = 0;
-            if (items > 3) {
-              htmlCode += '<div class="row">';
-              htmlCode += '<div class="col-sm-12">';
-              for (var row = 0; row < Math.round(items/3); row++) {
-                htmlCode += '<div class="row">';
-                for (position; ((position<(1+row)*3)&&(position<items)); position++) {
-                  var option = possibleAnswers[position];
-                  htmlCode += '<div class="col-sm-4">';
-                  htmlCode += '<button id="option'+standarizeEntry(option)+'" style="height:50px; width:100%" class="btn btn-info">'+option+'</button>';
-                  htmlCode += '</div>';
-                }
-                htmlCode += '</div>';
-              }
-              htmlCode += '</div>';
-              htmlCode += '</div>';
-            }
-            else {
-              htmlCode += '<div class="row">';
-              possibleAnswers.forEach(function(option) {
-                htmlCode += '<div class="col-sm-'+ btnWidth +'">';
-                htmlCode += '<button id="option'+standarizeEntry(option)+'" style="height:50px; width:100%" class="btn btn-info">'+option+'</button>';
-                htmlCode += '</div>';
-              });
-              htmlCode += '</div>';
-            }
+            htmlCode += '<div class="text-center">';
+            possibleAnswers.forEach(function(option) {
+                htmlCode += '<button id="option'+standarizeEntry(option)+'" class="btn btn-info btn-sm">'+option+'</button>';
+            });
+            htmlCode += '</div>';
             document.getElementById("replybox").innerHTML = '';
             document.getElementById("replybox").innerHTML = htmlCode;
             htmlCode = '';
