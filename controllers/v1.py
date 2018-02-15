@@ -4,6 +4,13 @@ auth.settings.allow_basic_login = True
 #@auth.requires(token_auth, requires_login=False)
 @cors_allow
 @request.restful()
+def upload():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        return dict(data = '')
+    return locals()
+@cors_allow
+@request.restful()
 def authk():
     response.view = 'generic.' + request.extension
     def PUT(**vars):
@@ -23,6 +30,40 @@ def authk():
         return dict(data = (api_token,first_name,last_name))
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
+    return locals()
+
+@cors_allow
+@request.restful()
+def password_reset():
+    response.view = 'generic.' + request.extension
+    def GET(email):
+        import base64
+        import binascii
+        import os
+        #email libs
+        import urllib
+        import ssl
+        import smtplib
+        #from for the pass-key
+        from hmac import compare_digest
+        from random import SystemRandom
+        from email.mime.text import MIMEText
+        #generates a new random password key
+        new_pswd = str(binascii.hexlify(os.urandom(3))).replace("'", "")
+        #update of the password in the table
+        db(db.auth_user.email == email).update(password=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(new_pswd)[0]))
+        #sending an email
+        user = 'no-reply@botprotec.com'
+        pswd = 'n0replyn0reply'
+        msg = MIMEText("Your password has been reset, login with the password:" + new_pswd + ". \r\nWe strongly recommend you change your password on your account settings.\r\n\r\nBotPro")
+        msg['Subject'] = "BotPro Account Password Reset"
+        msg['From'] = user
+        msg['To'] = email
+        server = smtplib.SMTP_SSL('smtp.zoho.com', 465)
+        server.login(user, pswd)
+        server.sendmail(user, [email], msg.as_string())
+        server.quit()
+        return dict(data = 'ok')
     return locals()
 
 @cors_allow
@@ -240,6 +281,80 @@ def bot_intents():
         return dict(result = 'ok')
     return locals()
 
+#intent_context_example
+#-----------------------
+@cors_allow
+@request.restful()
+def intent_example_count():
+    response.view = 'generic.' + request.extension
+    def GET(intent_id):
+        #getting the list of variables registered to the bot
+        return dict(data = db(db.intent_context_example.intent_id == intent_id).count())
+    return locals()
+@cors_allow
+@request.restful()
+def intent_example():
+    response.view = 'generic.' + request.extension
+    def GET(intent_id,start_limit,end_limit):
+        #getting all the intents per bot
+        v_start_limit = int(start_limit)
+        v_end_limit = int(end_limit)
+        return dict(examples = db(db.intent_context_example.intent_id == intent_id).select(db.intent_context_example.id, db.intent_context_example.intent_id, db.intent_context_example.example_text, limitby=(v_start_limit,v_end_limit)))
+    def PUT(**vars):
+        #update of intent
+        db(db.intent_context_example.id == vars['id']).update(example_text = vars['example_text'], intent_id = vars['intent_id'])
+        return dict(result = 'ok')
+    def POST(**vars):
+        #insert of intent
+        db.intent_context_example.insert(
+            intent_id = vars['intent_id'],
+            example_text = vars['example_text']
+        )
+        return dict(result = 'ok')
+    def DELETE(**vars):
+        #deletion of intent
+        db(db.intent_context_example.id == vars['id']).delete()
+        return dict(result = 'ok')
+    return locals()
+#-----------------------
+
+@cors_allow
+@request.restful()
+def bot_ai():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        #creates the file for the ai engine
+        import os
+        bot_id = vars['bot_id']
+        input_stream = vars['file_content']
+        myfile = os.path.join('/home/rasa/rasa_nlu/data/examples/rasa/', 'Project_' + str(bot_id) + ".json")
+        f = open(myfile,'w')
+        f.write(input_stream)
+        f.close()
+        return dict(result = 'ok')
+    return locals()
+#-------------------------
+@cors_allow
+@request.restful()
+def bot_ai_config():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        #creates the file for the ai engine
+        import os
+        bot_id = vars['bot_id']
+        input_stream = vars['file_content']
+        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'Project_' + str(bot_id) + ".json")
+        f = open(myfile,'w')
+        f.write(input_stream)
+        f.close()
+        #running the console command
+        os.system('cd /home/rasa/rasa_nlu')
+        os.system("python -m rasa_nlu.train -c sample_configs/Project_"+ str(bot_id) +".json")
+        #re-starting the ai system
+        os.system("systemctl restart rasa")
+        return dict(result = 'ok')
+    return locals()
+#-------------------------
 
 @cors_allow
 @request.restful()

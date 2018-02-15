@@ -225,6 +225,7 @@
 'Live Chat': 'Chat en vivo',
 'loading...': 'cargando...',
 'Log In': 'Log In',
+'Log Out': 'Log Out',
 'Logged in': 'Sesión iniciada',
 'Logged out': 'Sesión finalizada',
 'Login': 'Inicio de sesión',

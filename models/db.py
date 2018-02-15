@@ -100,6 +100,7 @@ import os
 db.define_table('bot',
                 Field('name','string'),
                 Field('enabled','boolean',default=True ),
+                Field('bot_language','string',default='en' ),
                 Field('picture','upload', default = os.path.join(request.folder, 'static', 'images', 'bot_avatar.png')),
                 Field('connectors', 'json'))
 #bot default image
@@ -146,6 +147,10 @@ db.define_table('bot_intent',
                 Field('bot_id', 'reference bot'),
                 Field('context_id', 'reference bot_context'),
                 Field('name', 'string'))
+
+db.define_table('intent_context_example',
+                Field('intent_id', 'reference bot_intent'),
+                Field('example_text', 'string'))
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
