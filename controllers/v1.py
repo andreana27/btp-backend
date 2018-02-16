@@ -7,7 +7,12 @@ auth.settings.allow_basic_login = True
 def upload():
     response.view = 'generic.' + request.extension
     def POST(**vars):
-        return dict(data = '')
+        #return dict(file = dir(vars['data'].file))
+        stream = vars['data'].file.read()
+        filename = vars['data'].filename
+        file_id = db.bot_upload.insert(bot_id = vars['bot_id'],
+                                       bot_file = db.bot_upload.bot_file.store(stream,filename=filename))
+        return dict(file = file_id)
     return locals()
 @cors_allow
 @request.restful()
@@ -171,7 +176,7 @@ def bot_conversations_recordcount():
 def website_connector():
     response.view = 'generic.' + request.extension
     def PUT(**vars):
-        #getting the parameters 
+        #getting the parameters
         bot_id = vars['bot_id']
         website = vars['website']
         #generates a random token for identifying a unique connection
@@ -339,6 +344,20 @@ def bot_ai():
 def bot_ai_config():
     response.view = 'generic.' + request.extension
     def POST(**vars):
+        def excute(cmd,fileName):
+            import subprocess
+            p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE)
+            output = ''
+            while True:
+                out = p.stderr.read(1)
+                if out == '' and p.poll() != None:
+                    break
+                if out != '':
+                    output = output + out
+            myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', fileName)
+            f = open(myfile,'w')
+            f.write(output)
+            f.close()
         #creates the file for the ai engine
         import os
         bot_id = vars['bot_id']
@@ -348,10 +367,11 @@ def bot_ai_config():
         f.write(input_stream)
         f.close()
         #running the console command
-        os.system('cd /home/rasa/rasa_nlu')
-        os.system("python -m rasa_nlu.train -c sample_configs/Project_"+ str(bot_id) +".json")
+        #os.system("python -m rasa_nlu.train -c sample_configs/Project_"+ str(bot_id) +".json")
+        excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_'+ str(bot_id) +'.json','log1.txt')
         #re-starting the ai system
-        os.system("systemctl restart rasa")
+        #os.system("systemctl restart rasa")
+        excute('systemctl restart rasa','log2.txt')
         return dict(result = 'ok')
     return locals()
 #-------------------------

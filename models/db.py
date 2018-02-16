@@ -107,6 +107,9 @@ db.define_table('bot',
 #import os
 #db.bot.picture.default = os.path.join(request.folder, 'static', 'images', 'bot-avatar.png')
 
+db.define_table('bot_upload',
+                Field('bot_id', 'reference bot'),
+                Field('bot_file', 'upload'))
 
 db.define_table('bot_storage',
                 Field('bot_id', 'reference bot'),
