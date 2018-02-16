@@ -165,12 +165,17 @@ def hook():
             def rest(chat_id, flow_item, bot, **vars):
                 import requests
                 result = ''
+                ##This is the array holding variable names I want
+                data = dict()
+                for key in flow_item['keys'] if flow_item['keys'] else []:
+                    value = db.bot_storage((db.bot_storage.bot_id == bot)&
+                                           (db.bot_storage.storage_owner == chat_id)&
+                                           (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
+                    data[key['in']] = value.storage_value
                 if flow_item['method'] == 'POST':
-                    data = dict()
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)
                 elif flow_item['method'] == 'GET':
-                    data = dict()
                     res = requests.get(flow_item['url'], params = data)
                     result = xmlescape(res.text)
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
@@ -205,6 +210,9 @@ def hook():
                 send_to = db((db.bot_internal_storage.storage_owner == chat_id)&
                      (db.bot_internal_storage.bot_id == bot.id)&
                      (db.bot_internal_storage.storage_key == 'send_to')).select().first()
+                should_store = db((db.bot_internal_storage.storage_owner == chat_id)&
+                             (db.bot_internal_storage.bot_id == bot.id)&
+                             (db.bot_internal_storage.storage_key == 'should_store')).select().first()
                 #conversation gets logged
                 log_conversation(chat_id, chat_text, bot, 'received','attachment')
                 if send_to:
@@ -233,6 +241,18 @@ def hook():
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                 return messenger(bot, conn)
+                if should_store:
+                    should_store_key = should_store.storage_value
+                    db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
+                                                    (db.bot_storage.storage_owner == chat_id)&
+                                                    (db.bot_storage.storage_key == should_store_key),
+                                                    storage_owner = chat_id,
+                                                    bot_id = bot.id,
+                                                    storage_key = should_store_key,
+                                                    storage_value = chat_text)
+                    db((db.bot_internal_storage.storage_owner == chat_id)&
+                       (db.bot_internal_storage.bot_id == bot.id)&
+                       (db.bot_internal_storage.storage_key == 'should_store')).delete()
                 #we now get the current context for the chatbot
                 current_context = db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
@@ -290,13 +310,13 @@ def hook():
                 #checking if the flow item has the "store" property
                 if ('store' in flow_item):
                     #required fields are: bot_id, storage_owner, storage_key, storage_value
-                    db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
-                                                    (db.bot_storage.storage_owner == chat_id)&
-                                                    (db.bot_storage.storage_key == flow_item['store']),
-                                                    storage_owner = chat_id,
-                                                    bot_id = bot.id,
-                                                    storage_key = flow_item['store'],
-                                                    storage_value = chat_text)
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.bot_id == bot.id)&
+                                                             (db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.storage_key == 'should_store'),
+                                                             storage_owner = chat_id,
+                                                             bot_id = bot.id,
+                                                             storage_key = 'should_store',
+                                                             storage_value = flow_item['store'])
                 next_position = flow_position + 1
                 #Make it back to 0
                 if next_position >= len(context.context_json[context.name]):
@@ -440,13 +460,19 @@ def hook():
                                                 action = action))
             def rest(chat_id, flow_item, bot, **vars):
                 import requests
+                import json
                 result = ''
+                ##This is the array holding variable names I want
+                data = dict()
+                for key in flow_item['keys'] if flow_item['keys'] else []:
+                    value = db.bot_storage((db.bot_storage.bot_id == bot)&
+                                           (db.bot_storage.storage_owner == chat_id)&
+                                           (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
+                    data[key['in']] = value.storage_value
                 if flow_item['method'] == 'POST':
-                    data = dict()
                     res = requests.post(flow_item['url'], data = data)
-                    result = xmlescape(res.text)
+                    result = xmlescape(res.text)[:4096]
                 elif flow_item['method'] == 'GET':
-                    data = dict()
                     res = requests.get(flow_item['url'], params = data)
                     result = xmlescape(res.text)[:4096]
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
@@ -465,6 +491,9 @@ def hook():
             send_to = db((db.bot_internal_storage.storage_owner == chat_id)&
                          (db.bot_internal_storage.bot_id == bot.id)&
                          (db.bot_internal_storage.storage_key == 'send_to')).select().first()
+            should_store = db((db.bot_internal_storage.storage_owner == chat_id)&
+                             (db.bot_internal_storage.bot_id == bot.id)&
+                             (db.bot_internal_storage.storage_key == 'should_store')).select().first()
             #Smart response validation request
             #import httplib, urllib
             #payload = "parse?q=algo&project=default"
@@ -497,6 +526,18 @@ def hook():
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             return telegram(bot, conn)
+            if should_store:
+                should_store_key = should_store.storage_value
+                db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
+                                                (db.bot_storage.storage_owner == chat_id)&
+                                                (db.bot_storage.storage_key == should_store_key),
+                                                storage_owner = chat_id,
+                                                bot_id = bot.id,
+                                                storage_key = should_store_key,
+                                                storage_value = chat_text)
+                db((db.bot_internal_storage.storage_owner == chat_id)&
+                   (db.bot_internal_storage.bot_id == bot.id)&
+                   (db.bot_internal_storage.storage_key == 'should_store')).delete()
             #we now get the current context for the chatbot
             current_context = db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
@@ -566,13 +607,13 @@ def hook():
             #checking if the flow item has the "store" property
             if ('store' in flow_item):
                 #required fields are: bot_id, storage_owner, storage_key, storage_value
-                db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
-                                                (db.bot_storage.storage_owner == chat_id)&
-                                                (db.bot_storage.storage_key == flow_item['store']),
-                                                storage_owner = chat_id,
-                                                bot_id = bot.id,
-                                                storage_key = flow_item['store'],
-                                                storage_value = chat_text)
+                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.bot_id == bot.id)&
+                                                         (db.bot_internal_storage.storage_owner == chat_id)&
+                                                         (db.bot_internal_storage.storage_key == 'should_store'),
+                                                         storage_owner = chat_id,
+                                                         bot_id = bot.id,
+                                                         storage_key = 'should_store',
+                                                         storage_value = flow_item['store'])
             #THIS CALL CAN CHANGE THE CONTEXT AND POSITION COMPLETELY
             flow[flow_item['type']](chat_id, flow_item,
                                     bot = bot,
@@ -694,12 +735,17 @@ def hook():
             def rest(chat_id, flow_item, bot, **vars):
                 import requests
                 result = ''
+                ##This is the array holding variable names I want
+                data = dict()
+                for key in flow_item['keys'] if flow_item['keys'] else []:
+                    value = db.bot_storage((db.bot_storage.bot_id == bot)&
+                                           (db.bot_storage.storage_owner == chat_id)&
+                                           (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
+                    data[key['in']] = value.storage_value
                 if flow_item['method'] == 'POST':
-                    data = dict()
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)
                 elif flow_item['method'] == 'GET':
-                    data = dict()
                     res = requests.get(flow_item['url'], params = data)
                     result = xmlescape(res.text)
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
@@ -717,6 +763,9 @@ def hook():
             send_to = db((db.bot_internal_storage.storage_owner == chat_id)&
                          (db.bot_internal_storage.bot_id == bot.id)&
                          (db.bot_internal_storage.storage_key == 'send_to')).select().first()
+            should_store = db((db.bot_internal_storage.storage_owner == chat_id)&
+                              (db.bot_internal_storage.bot_id == bot.id)&
+                              (db.bot_internal_storage.storage_key == 'should_store')).select().first()
             if send_to:
                 send_to = send_to.storage_value
                 if send_to != '':
@@ -743,6 +792,18 @@ def hook():
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             return website(bot, conn)
+            if should_store:
+                should_store_key = should_store.storage_value
+                db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
+                                                (db.bot_storage.storage_owner == chat_id)&
+                                                (db.bot_storage.storage_key == should_store_key),
+                                                storage_owner = chat_id,
+                                                bot_id = bot.id,
+                                                storage_key = should_store_key,
+                                                storage_value = chat_text)
+                db((db.bot_internal_storage.storage_owner == chat_id)&
+                   (db.bot_internal_storage.bot_id == bot.id)&
+                   (db.bot_internal_storage.storage_key == 'should_store')).delete()
             #we now get the current context for the chatbot
             current_context = db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
@@ -806,17 +867,17 @@ def hook():
                                                                     storage_key = 'flow_position',
                                                                     storage_value = 0)
                             return website(bot, conn)
-            #save the answer of the cliente in the bot_storage table
+            #save the answer of the client in the bot_storage table
             #checking if the flow item has the "store" property
             if ('store' in flow_item):
                 #required fields are: bot_id, storage_owner, storage_key, storage_value
-                db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
-                                                (db.bot_storage.storage_owner == chat_id)&
-                                                (db.bot_storage.storage_key == flow_item['store']),
-                                                storage_owner = chat_id,
-                                                bot_id = bot.id,
-                                                storage_key = flow_item['store'],
-                                                storage_value = chat_text)
+                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.bot_id == bot.id)&
+                                                         (db.bot_internal_storage.storage_owner == chat_id)&
+                                                         (db.bot_internal_storage.storage_key == 'should_store'),
+                                                         storage_owner = chat_id,
+                                                         bot_id = bot.id,
+                                                         storage_key = 'should_store',
+                                                         storage_value = flow_item['store'])
             #THIS CALL CAN CHANGE THE CONTEXT AND POSITION COMPLETELY
             ret = flow[flow_item['type']](chat_id, flow_item,
                                            bot = bot,
@@ -842,6 +903,4 @@ def hook():
         conn = connfind(bot, connector)
         #loggin the client response
         return actions[connector](bot, conn)
-    def PUT(table_name,record_id,**vars):
-        return dict()
     return locals()
