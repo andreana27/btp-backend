@@ -371,7 +371,7 @@ def bot_ai_config():
         excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_'+ str(bot_id) +'.json','log1.txt')
         #re-starting the ai system
         #os.system("systemctl restart rasa")
-        excute('systemctl restart rasa','log2.txt')
+        excute('sudo systemctl restart rasa','log2.txt')
         return dict(result = 'ok')
     return locals()
 #-------------------------

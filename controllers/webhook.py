@@ -285,9 +285,14 @@ def hook():
                         json_string = response.json()
                         #getting the conext name
                         context = json_string['intent']['name']
+                        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta2.txt')
+                        f = open(myfile,'w')
+                        f.write(json_string)
+                        f.close()
                         if context:
-                            context_id = db((db.bot_context.bot_id == bot.id)&
-                                     (db.bot_context.name == context)).select(db.bot_context.id).first()
+                            context_id = db((db.bot_context.bot_id == bot.id)
+                                        &(db.bot_intent.name == context)
+                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
                             if context_id:
                                 #send_to that context and clear the direction
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -581,10 +586,15 @@ def hook():
                     #import json
                     json_string = response.json()
                     #getting the conext name
+                    myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta1.txt')
+                    f = open(myfile,'w')
+                    f.write(json_string)
+                    f.close()
                     context = json_string['intent']['name']
                     if context:
-                        context_id = db((db.bot_context.bot_id == bot.id)&
-                                 (db.bot_context.name == context)).select(db.bot_context.id).first()
+                        context_id = db((db.bot_context.bot_id == bot.id)
+                                        &(db.bot_intent.name == context)
+                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
                         if context_id:
                             #send_to that context and clear the direction
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -845,12 +855,19 @@ def hook():
                     #context = response['intent']
                     #import json
                     json_string = response.json()
-                    #getting the conext name
                     context = json_string['intent']['name']
+                    #getting the conext name
+                    myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta3.txt')
+                    f = open(myfile,'a')
+                    f.write(context)
+                    f.write(' id:')
+                    f.write(str(bot.id))
                     if context:
-                        context_id = db((db.bot_context.bot_id == bot.id)&
-                                 (db.bot_context.name == context)).select(db.bot_context.id).first()
+                        context_id = db((db.bot_context.bot_id == bot.id)
+                                        &(db.bot_intent.name == context)
+                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
                         if context_id:
+                            f.write(str(context_id))
                             #send_to that context and clear the direction
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
@@ -867,6 +884,7 @@ def hook():
                                                                     storage_key = 'flow_position',
                                                                     storage_value = 0)
                             return website(bot, conn)
+                    f.close()
             #save the answer of the client in the bot_storage table
             #checking if the flow item has the "store" property
             if ('store' in flow_item):
