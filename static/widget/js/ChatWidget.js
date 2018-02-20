@@ -39,11 +39,11 @@
     //---------------------------
     //setup variables
     //var server = '//192.168.0.30:9090';
-    var server ='https://a2.botprotec.com/backend/static/widget/';
+    var server ='https://190.113.91.119/backend/static/widget/';
     var botName = document.getElementById("chat-widget-container").getAttribute("botName");
     var botId = document.getElementById("chat-widget-container").getAttribute("botId");
     var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
-    var backend = 'https://a2.botprotec.com/backend/webhook/hook/';
+    var backend = 'https://190.113.91.119/backend/webhook/hook/';
     var width = document.getElementById("chat-widget-container").getAttribute("width");
     var height = document.getElementById("chat-widget-container").getAttribute("height");
     var userId = '';

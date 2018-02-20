@@ -751,13 +751,19 @@ def hook():
                     value = db.bot_storage((db.bot_storage.bot_id == bot)&
                                            (db.bot_storage.storage_owner == chat_id)&
                                            (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
-                    data[key['in']] = value.storage_value
+                    if value != None :
+                        data[key['in']] = value.storage_value
+                    else :
+                        data[key['in']] = None
                 if flow_item['method'] == 'POST':
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)
                 elif flow_item['method'] == 'GET':
-                    res = requests.get(flow_item['url'], params = data)
-                    result = xmlescape(res.text)
+                    try:
+                        res = requests.get(flow_item['url'], params = data)
+                        result = xmlescape(res.text)
+                    except:
+                        result = 'No se pudo conectar al sistema de cambio de contraseña, intente más tarde'
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
                 return r('sendMessage', dict(chat_id = chat_id,text = result))
             flow = {'text': text,
