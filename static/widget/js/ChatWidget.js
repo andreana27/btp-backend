@@ -39,15 +39,17 @@
     //---------------------------
     //setup variables
     //var server = '//192.168.0.30:9090';
-    var server ='https://190.113.91.119/backend/static/widget/';
+    //var server ='https://190.113.91.119/backend/static/widget/';
+    //var backend = 'https://190.113.91.119/backend/webhook/hook/'
+    var server ='https://a2.botprotec.com/backend/static/widget/';
     var botName = document.getElementById("chat-widget-container").getAttribute("botName");
     var botId = document.getElementById("chat-widget-container").getAttribute("botId");
     var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
-    var backend = 'https://190.113.91.119/backend/webhook/hook/';
+    var backend = 'https://a2.botprotec.com/backend/webhook/hook/';
     var width = document.getElementById("chat-widget-container").getAttribute("width");
     var height = document.getElementById("chat-widget-container").getAttribute("height");
     var userId = '';
-    var userName = '';
+    var userName = 'User';
     //----------------------------------------
     //var for creating HTML Elements
     var HTMLString = '';
@@ -74,7 +76,8 @@
             var result = data.verification;
             if (result == 1) {
               setupHostSettings();
-              //userId = generateUserID();
+              userId = generateUserID(15);
+			  console.log('userid: ' + userId);
             }
             else {
               //error handling
@@ -82,6 +85,21 @@
           }
       });//END Ajax Petition
 
+	  function generateUserID(n) {
+			// white list all possible characters
+			var chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+			// temp string to build a token
+			var token = '';
+			// loop: get random index from whitelist, append to temp string
+			for(var i = 0; i < n; i++) {
+				// random from 0 to length of whitelist
+				var randomCharIndex = Math.floor(Math.random() * chars.length);
+				// append a random character to the temp string
+				token += chars[randomCharIndex];
+			}
+			// finally return the random token string
+			return token;
+		}
       function setupHostSettings() {
         //setting up css settings
         SetupCSS();
@@ -93,9 +111,9 @@
           }
           //create the chat box
           CreateChatBox();
-          CreateHelloBox();
+          //CreateHelloBox();
           //
-          //StartWidget();
+          StartWidget();
         }
         catch(err) {
 
@@ -391,26 +409,32 @@
 
       //Starts the communication process
       function StartWidget() {
-        try{
-          $.ajax({
-              type: "POST",
-              data: { text: 'this is a text', id: userId },
-              url: backend + 'website/' + botId +'.json',
-              contentType: 'application/x-www-form-urlencoded',
-              dataType: "text",
-              crossDomain: true,
-              complete: function(data){
-                console.log('request completed');
-              },
-              success: function(data){
-                console.log('made it');
-                console.log(data);
-              }
-            });
-        }
-        catch(ex)
+        var userResponse = '/start';
+        if (userResponse.length < 1)
         {
-          console.log('error '+ ex);
+          alert("You must provide an asnwer.")
+        }else {
+          document.getElementById('txtResponse').value = '';
+          AddUserResponse(userResponse);
+          try{
+            $.ajax({
+                type: "POST",
+                data: { text: userResponse, id: userId },
+                url: backend + 'website/' + botId +'.json',
+                contentType: 'application/x-www-form-urlencoded',
+                dataType: "text",
+                crossDomain: true,
+                complete: function(data){},
+                success: function(data){
+                  var serverResponse = JSON.parse(data);
+                  processResponse(serverResponse.envelope);
+                }
+              });
+          }
+          catch(ex)
+          {
+            console.log('error '+ ex);
+          }
         }
       }//END StartWidget
 
@@ -446,7 +470,7 @@
         HTMLString += '<div class="chat-body clearfix">';
         HTMLString += '<div class="header">';
         //Client name
-        HTMLString += '<strong class="primary-font">'+ userId +'</strong>';
+        HTMLString += '<strong class="primary-font">'+ userName +'</strong>';
         //sampleText += '<small class="pull-right text-muted"><i class="fa fa-clock-o"></i> 13 mins ago</small>'
         HTMLString += '</div>';
         HTMLString += '<p>';
