@@ -16,6 +16,17 @@ def hook():
                     return conn
         def messenger(bot, conn):
             #raise Exception(request.vars)
+            myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'messenger.txt')
+            f = open(myfile,'a')
+            f.write('\n')
+            f.write(str(request.vars['hub.verify_token']))
+            f.write('\n')
+            f.write(str(conn['challenge']))
+            f.write('\n')
+            f.write(str(request.vars['hub.mode']))
+            f.write('\n')
+            f.write(str(request.vars['hub.challenge']))
+            f.close();
             if request.vars['hub.verify_token'] == conn['challenge'] and request.vars['hub.mode'] == 'subscribe':
                 return request.vars['hub.challenge']
             return 'Error validating token'
@@ -179,7 +190,8 @@ def hook():
                     res = requests.get(flow_item['url'], params = data)
                     result = xmlescape(res.text)
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
-                return r('sendMessage', dict(chat_id = chat_id,text = result))
+                return r(dict(recipient = dict(id = chat_id),
+                              message = dict(text = result)))
             flow = {'text': text,
                     'quick_reply': quick_reply,
                     'sender_action': sender_action,
@@ -287,7 +299,7 @@ def hook():
                         context = json_string['intent']['name']
                         myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta2.txt')
                         f = open(myfile,'w')
-                        f.write(json_string)
+                        f.write(str(json_string))
                         f.close()
                         if context:
                             context_id = db((db.bot_context.bot_id == bot.id)
@@ -309,7 +321,7 @@ def hook():
                                                                         bot_id = bot.id,
                                                                         storage_key = 'flow_position',
                                                                         storage_value = 0)
-                                return website(bot, conn)
+                                return messenger(bot, conn)
                 #END SMART OBJECTS
                 #save the answer of the cliente in the bot_storage table
                 #checking if the flow item has the "store" property
@@ -853,6 +865,7 @@ def hook():
             log_conversation(chat_id, chat_text, bot.id, 'received','text')
             if flow_position > 0:
                 flow_item_eval = context.context_json[context.name][flow_position - 1]
+                #SMART OBJECTS
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                     #Smart response validation request
                     import requests
@@ -866,14 +879,14 @@ def hook():
                     myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta3.txt')
                     f = open(myfile,'a')
                     f.write(context)
-                    f.write(' id:')
-                    f.write(str(bot.id))
+                    f.write('\n'+' id:')
+                    f.write(str(bot.id)+'\n')
                     if context:
                         context_id = db((db.bot_context.bot_id == bot.id)
                                         &(db.bot_intent.name == context)
                                         &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
                         if context_id:
-                            f.write(str(context_id))
+                            f.write(str(context_id)+'\n')
                             #send_to that context and clear the direction
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
