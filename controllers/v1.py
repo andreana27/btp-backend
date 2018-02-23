@@ -8,12 +8,22 @@ def upload():
     response.view = 'generic.' + request.extension
     def POST(**vars):
         #return dict(file = dir(vars['data'].file))
-        stream = vars['data'].file.read()
+        stream = vars['data'].file
         filename = vars['data'].filename
         file_id = db.bot_upload.insert(bot_id = vars['bot_id'],
                                        bot_file = db.bot_upload.bot_file.store(stream,filename=filename))
-        return dict(file = file_id)
+        return dict(file = file_id, filename = file_id.bot_file)
     return locals()
+
+@cors_allow
+@cache.action()
+def download():
+    """
+    allows downloading of uploaded files
+    http://..../[app]/default/download/[filename]
+    """
+    return response.download(request, db)
+
 @cors_allow
 @request.restful()
 def authk():
