@@ -354,7 +354,7 @@ def bot_ai():
 def bot_ai_config():
     response.view = 'generic.' + request.extension
     def POST(**vars):
-        def excute(cmd,fileName):
+        def excute(cmd,fileName, overwrite = False):
             import subprocess
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE)
             output = ''
@@ -365,23 +365,31 @@ def bot_ai_config():
                 if out != '':
                     output = output + out
             myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', fileName)
-            f = open(myfile,'w')
+            if overwrite:
+                f = open(myfile,'w')
+            else:
+                f = open(myfile,'a')
             f.write(output)
             f.close()
         #creates the file for the ai engine
         import os
         bot_id = vars['bot_id']
         input_stream = vars['file_content']
-        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'Project_' + str(bot_id) + ".json")
+        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/',
+                              'Project_%s.json' %(bot_id))
         f = open(myfile,'w')
         f.write(input_stream)
         f.close()
-        #running the console command
-        #os.system("python -m rasa_nlu.train -c sample_configs/Project_"+ str(bot_id) +".json")
-        excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_'+ str(bot_id) +'.json','log1.txt')
+        #Deletes older models
+        excute('rm -rf /home/rasa/rasa_nlu/projects/Project_%s/*' % (bot_id),
+               'Train_%s.log' % (bot_id),
+               overwrite = True)
+        #Trains and create newer model
+        excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_%s.json' % (bot_id),
+               'Train_%s.log' % (bot_id))
         #re-starting the ai system
-        #os.system("systemctl restart rasa")
-        excute('sudo systemctl restart rasa','log2.txt')
+        excute('sudo systemctl restart rasa',
+               'Train_%s.log' % (bot_id))
         return dict(result = 'ok')
     return locals()
 #-------------------------
@@ -435,4 +443,31 @@ def api():
         r = db(db[table_name]._id==record_id).delete()
         return dict(content=r)
         #return dict(content = db(db[table_name]._id == record_id).select())
+    return locals()
+
+@cors_allow
+@request.restful()
+def deleteContext():
+    response.view = 'generic.' + request.extension
+    def GET(context_id):
+        def recursiveDelete(contextid):
+            context_childs=db(db.bot_context.parent_context==context_id).select(db.bot_context.id)
+            for child in context_childs:
+                if(db(db.bot_intent.context_id == child.id).count()>0):
+                    return dict(data='error')
+                return recursiveDelete(child.id)
+            if(db(db.bot_intent.context_id == contextid).count()>0):
+                return dict(data='error')
+            return dict(data = 'ok')
+            #intent_ids = db(db.bot_intent.context_id == child.id).select(db.bot_intent.id)
+            #for intent_id in intent_ids:
+            #    db(db.intent_context_example.intent_id==intent_id.id).delete()
+            #db(db.bot_intent.context_id == child.id).delete()
+        #intent_ids = db(db.bot_intent.context_id == context_id).select(db.bot_intent.id)
+        #for intent_id in intent_ids:
+        #    db(db.intent_context_example.intent_id==intent_id.id).delete()
+        #db(db.bot_intent.context_id == context_id).delete()
+        #db(db.bot_context.parent_context==context_id).delete()
+        #db(db.bot_context.id==context_id).delete()
+        return recursiveDelete(context_id)
     return locals()
