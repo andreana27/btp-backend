@@ -102,7 +102,8 @@ db.define_table('bot',
                 Field('enabled','boolean',default=True ),
                 Field('bot_language','string',default='en' ),
                 Field('picture','upload', default = os.path.join(request.folder, 'static', 'images', 'bot_avatar.png')),
-                Field('connectors', 'json'))
+                Field('connectors', 'json'),
+                Field('ai_configured','boolean',default=False))
 #bot default image
 #import os
 #db.bot.picture.default = os.path.join(request.folder, 'static', 'images', 'bot-avatar.png')
@@ -122,6 +123,12 @@ db.define_table('bot_internal_storage',
                 Field('storage_owner', 'string'),
                 Field('storage_key', 'string'),
                 Field('storage_value', 'string'))
+
+db.define_table('bot_context_heap',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('context_id', 'string'),
+                Field('context_position', 'string'))
 
 db.define_table('bot_context',
                 Field('bot_id', 'reference bot'),

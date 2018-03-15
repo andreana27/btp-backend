@@ -148,22 +148,28 @@ def hook():
                 log_conversation(chat_id, '<%s>'%(flow_item['action']), bot.id, 'sent','text')
                 if flow_item['action'] == 'return':
                     #find the parent context and set to it
-                    if context.parent_context is not None:
+                    next_position_ = 0
+                    heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
+                               (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
+                    if(heap_ is not None):
+                        next_position_ = 0
+                    else:
+                        if context.parent_context is not None:
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'current_context',
+                                                                storage_value = context.parent_context.id)
+                        #change the position back to 0
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id)&
-                                                             (db.bot_internal_storage.storage_key == 'current_context'),
-                                                            storage_owner = chat_id,
-                                                            bot_id = bot.id,
-                                                            storage_key = 'current_context',
-                                                            storage_value = context.parent_context.id)
-                    #change the position back to 0
-                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id)&
-                                                             (db.bot_internal_storage.storage_key == 'flow_position'),
-                                                            storage_owner = chat_id,
-                                                            bot_id = bot.id,
-                                                            storage_key = 'flow_position',
-                                                            storage_value = 0)
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'flow_position',
+                                                                storage_value = next_position_)
                 elif flow_item['action'] == 'repeat':
                     #just change the next position back to 0, thats it.
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -182,7 +188,10 @@ def hook():
                     value = db.bot_storage((db.bot_storage.bot_id == bot)&
                                            (db.bot_storage.storage_owner == chat_id)&
                                            (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
-                    data[key['in']] = value.storage_value
+                    if value:
+                        data[key['in']] = value.storage_value
+                    else:
+                        data[key['in']] = None
                 if flow_item['method'] == 'POST':
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)
@@ -234,6 +243,25 @@ def hook():
                         for matches in send_to.split(","):
                             match, action = matches.split(":")
                             if chat_text == match:
+                                flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                                if(int(flow_position_.storage_value)!=0):
+                                    current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                       (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                                    current_context_id = 0
+                                    if(current_context_!=None):
+                                        current_context_id = current_context_.storage_value
+                                    else:
+                                        default_context = db((db.bot_context.bot_id == bot.id)
+                                                             &(db.bot_context.name == 'default')).select().first()
+                                        current_context_id = default_context.id
+
+                                    db.bot_context_heap.insert(storage_owner = chat_id,
+                                                               bot_id = bot.id,
+                                                               context_id = current_context_id,
+                                                               context_position = flow_position_.storage_value)
                                 #send_to that context and clear the direction
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
@@ -288,40 +316,73 @@ def hook():
                 if flow_position > 0:
                     flow_item_eval = context.context_json[context.name][flow_position - 1]
                     if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
-                        #Smart response validation request
-                        import requests
-                        params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
-                        response = requests.get('http://localhost:5000/parse', params=params)
-                        #context = response['intent']
-                        #import json
-                        json_string = response.json()
-                        #getting the conext name
-                        context = json_string['intent']['name']
-                        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta2.txt')
-                        f = open(myfile,'w')
-                        f.write(str(json_string))
-                        f.close()
-                        if context:
-                            context_id = db((db.bot_context.bot_id == bot.id)
-                                        &(db.bot_intent.name == context)
-                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
-                            if context_id:
-                                #send_to that context and clear the direction
-                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                     (db.bot_internal_storage.bot_id == bot.id)&
-                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
-                                                                    storage_owner = chat_id,
-                                                                    bot_id = bot.id,
-                                                                    storage_key = 'current_context',
-                                                                    storage_value = int(context_id))
-                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                        validacion=0
+                        if ('validation' in flow_item_eval):
+                            #fdebug.write(flow_item_eval['validation']+'\n')
+                            validacion+=int(flow_item_eval['validation'])
+                        if(validacion==1):#verificamos si la entrada es de tipo texto
+                            #fdebug.write('Tipo texto: '+chat_text+'\n')
+                            validacion=1
+                        if(validacion==2):#verificamos si la entrada es de tipo numero
+                            #fdebug.write(chat_text+'\n')
+                            import re
+                            if re.match("^\d+$",chat_text.lower()):
+                                #fdebug.write('Es un numero \n')
+                                validacion=2
+                            else:
+                                validacion=0
+                        if(validacion==3):#verificamos si la entrada es un email
+                            #fdebug.write(chat_text+'\n')
+                            import re
+                            if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                                #fdebug.write('email correcto \n')
+                                validacion=3
+                            else:
+                                validacion=0
+                        if(validacion==4):#verificamos si la entrada es de tipo fecha
+                            #fdebug.write(chat_text+'\n')
+                            import re
+                            if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                                #fdebug.write('fecha correcta \n')
+                                validacion=4
+                            else:
+                                validacion=0
+                        #fdebug.close()
+                        if(validacion<1):
+                            #Smart response validation request
+                            import requests
+                            params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
+                            response = requests.get('http://localhost:5000/parse', params=params)
+                            #context = response['intent']
+                            #import json
+                            json_string = response.json()
+                            #getting the conext name
+                            context = json_string['intent']['name']
+                            myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta2.txt')
+                            f = open(myfile,'w')
+                            f.write(str(json_string))
+                            f.close()
+                            if context:
+                                context_id = db((db.bot_context.bot_id == bot.id)
+                                            &(db.bot_intent.name == context)
+                                            &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
+                                if context_id:
+                                    #send_to that context and clear the direction
+                                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                          (db.bot_internal_storage.bot_id == bot.id)&
-                                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                         (db.bot_internal_storage.storage_key == 'current_context'),
                                                                         storage_owner = chat_id,
                                                                         bot_id = bot.id,
-                                                                        storage_key = 'flow_position',
-                                                                        storage_value = 0)
-                                return messenger(bot, conn)
+                                                                        storage_key = 'current_context',
+                                                                        storage_value = int(context_id))
+                                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                             (db.bot_internal_storage.bot_id == bot.id)&
+                                                                             (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                            storage_owner = chat_id,
+                                                                            bot_id = bot.id,
+                                                                            storage_key = 'flow_position',
+                                                                            storage_value = 0)
+                                    return messenger(bot, conn)
                 #END SMART OBJECTS
                 #save the answer of the cliente in the bot_storage table
                 #checking if the flow item has the "store" property
@@ -337,14 +398,36 @@ def hook():
                 next_position = flow_position + 1
                 #Make it back to 0
                 if next_position >= len(context.context_json[context.name]):
-                    next_position = 0
+                    heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
+                               (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
+                    if(heap_!= None):
+                        next_position=heap_.context_position
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = heap_.context_id)
+                        db(db.bot_context_heap.id == heap_.id).delete()
+                    else:
+                        next_position = 0
+                        #find the parent context and set to it
+                        if context.parent_context is not None:
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'current_context',
+                                                                storage_value = context.parent_context.id)
                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                         (db.bot_internal_storage.bot_id == bot.id)&
-                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
-                                                        storage_owner = chat_id,
-                                                        bot_id = bot.id,
-                                                        storage_key = 'flow_position',
-                                                        storage_value = next_position)
+                                                             (db.bot_internal_storage.bot_id == bot.id)&
+                                                             (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                            storage_owner = chat_id,
+                                                            bot_id = bot.id,
+                                                            storage_key = 'flow_position',
+                                                            storage_value = next_position)
                 #THIS CALL CAN CHANGE THE CONTEXT AND POSITION COMPLETELY
                 flow[flow_item['type']](chat_id, flow_item,
                                         bot = bot,
@@ -485,7 +568,10 @@ def hook():
                     value = db.bot_storage((db.bot_storage.bot_id == bot)&
                                            (db.bot_storage.storage_owner == chat_id)&
                                            (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
-                    data[key['in']] = value.storage_value
+                    if value:
+                        data[key['in']] = value.storage_value
+                    else:
+                        data[key['in']] = None
                 if flow_item['method'] == 'POST':
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)[:4096]
@@ -578,6 +664,15 @@ def hook():
             #Make it back to 0
             if next_position >= len(context.context_json[context.name]):
                 next_position = 0
+                #find the parent context and set to it
+                if context.parent_context is not None:
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id)&
+                                                             (db.bot_internal_storage.storage_key == 'current_context'),
+                                                            storage_owner = chat_id,
+                                                            bot_id = bot.id,
+                                                            storage_key = 'current_context',
+                                                            storage_value = context.parent_context.id)
             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -590,40 +685,76 @@ def hook():
             if flow_position > 0:
                 flow_item_eval = context.context_json[context.name][flow_position - 1]
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
-                    #Smart response validation request
-                    import requests
-                    params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
-                    response = requests.get('http://localhost:5000/parse', params=params)
-                    #context = response['intent']
-                    #import json
-                    json_string = response.json()
-                    #getting the conext name
-                    myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta1.txt')
-                    f = open(myfile,'w')
-                    f.write(json_string)
-                    f.close()
-                    context = json_string['intent']['name']
-                    if context:
-                        context_id = db((db.bot_context.bot_id == bot.id)
-                                        &(db.bot_intent.name == context)
-                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
-                        if context_id:
-                            #send_to that context and clear the direction
-                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                 (db.bot_internal_storage.bot_id == bot.id)&
-                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
-                                                                storage_owner = chat_id,
-                                                                bot_id = bot.id,
-                                                                storage_key = 'current_context',
-                                                                storage_value = int(context_id))
-                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                    validacion=0
+                    if ('validation' in flow_item_eval):
+                        #fdebug.write(flow_item_eval['validation']+'\n')
+                        validacion+=int(flow_item_eval['validation'])
+                    if(validacion==1):#verificamos si la entrada es de tipo texto
+                        #fdebug.write('Tipo texto: '+chat_text+'\n')
+                        validacion=1
+                    if(validacion==2):#verificamos si la entrada es de tipo numero
+                        fdebug.write(chat_text+'\n')
+                        import re
+                        if re.match("^\d+$",chat_text.lower()):
+                            #fdebug.write('Es un numero \n')
+                            validacion=2
+                        else:
+                            validacion=0
+                    if(validacion==3):#verificamos si la entrada es un email
+                        #fdebug.write(chat_text+'\n')
+                        import re
+                        if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                            #fdebug.write('email correcto \n')
+                            validacion=3
+                        else:
+                            validacion=0
+                    if(validacion==4):#verificamos si la entrada es de tipo fecha
+                        #fdebug.write(chat_text+'\n')
+                        import re
+                        if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                            #fdebug.write('fecha correcta \n')
+                            validacion=4
+                        else:
+                            validacion=0
+                    #fdebug.close()
+                    if(validacion<1):
+                        #Smart response validation request
+                        import requests
+                        params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
+                        response = requests.get('http://localhost:5000/parse', params=params)
+                        #context = response['intent']
+                        #import json
+                        json_string = response.json()
+                        context = json_string['intent']['name']
+                        #getting the conext name
+                        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'Project_'+ str(bot.id)+'.log')
+                        f = open(myfile,'w')
+                        f.write(context)
+                        f.write('\n'+' id:')
+                        f.write(str(bot.id)+'\n')
+                        if context:
+                            context_id = db((db.bot_context.bot_id == bot.id)
+                                            &(db.bot_intent.name == context)
+                                            &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
+                            if context_id:
+                                f.write(str(context_id)+'\n')
+                                #send_to that context and clear the direction
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
-                                                                     (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
-                                                                    storage_key = 'flow_position',
-                                                                    storage_value = 0)
-                            return website(bot, conn)
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = int(context_id))
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                        storage_owner = chat_id,
+                                                                        bot_id = bot.id,
+                                                                        storage_key = 'flow_position',
+                                                                        storage_value = 0)
+                                return telegram(bot, conn)
+                        f.close()
             #END SMART OBJECTS
             #save the answer of the client in the bot_storage table
             #checking if the flow item has the "store" property
@@ -674,22 +805,28 @@ def hook():
                 log_conversation(chat_id, '<%s>'%(flow_item['action']), bot.id, 'sent','text')
                 if flow_item['action'] == 'return':
                     #find the parent context and set to it
-                    if context.parent_context is not None:
-                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id)&
-                                                             (db.bot_internal_storage.storage_key == 'current_context'),
-                                                            storage_owner = chat_id,
-                                                            bot_id = bot.id,
-                                                            storage_key = 'current_context',
-                                                            storage_value = context.parent_context.id)
-                    #change the position back to 0
-                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id)&
-                                                             (db.bot_internal_storage.storage_key == 'flow_position'),
-                                                            storage_owner = chat_id,
-                                                            bot_id = bot.id,
-                                                            storage_key = 'flow_position',
-                                                            storage_value = 0)
+                    next_position_ = 0
+                    heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
+                               (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
+                    if(heap_ is not None):
+                        next_position_ = 0
+                    else:
+                        if context.parent_context is not None:
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'current_context',
+                                                                storage_value = context.parent_context.id)
+                            #change the position back to 0
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                        storage_owner = chat_id,
+                                                                        bot_id = bot.id,
+                                                                        storage_key = 'flow_position',
+                                                                        storage_value = next_position_)
                 elif flow_item['action'] == 'repeat':
                     #just change the next position back to 0, thats it.
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -718,6 +855,7 @@ def hook():
                     if el['sendTo']:
                         send_to.append(':'.join([el['title'], str(el['sendTo'])]))
                 #save the send_to, "string_match:context_id,..."
+                
                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
                                                          (db.bot_internal_storage.storage_key == 'send_to'),
@@ -737,6 +875,7 @@ def hook():
                     if el['sendTo']:
                         send_to.append(':'.join([el['title'], str(el['sendTo'])]))
                 #save the send_to, "string_match:context_id,..."
+
                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
                                                          (db.bot_internal_storage.storage_key == 'send_to'),
@@ -744,6 +883,7 @@ def hook():
                                                          bot_id = bot.id,
                                                          storage_key = 'send_to',
                                                          storage_value = ','.join(send_to))
+
                 return r('sendMessage', dict(chat_id = chat_id,
                                              text = flow_item['content'],
                                              reply_markup = dict(keyboard = [keyboard], one_time_keyboard = True)))
@@ -763,7 +903,7 @@ def hook():
                     value = db.bot_storage((db.bot_storage.bot_id == bot)&
                                            (db.bot_storage.storage_owner == chat_id)&
                                            (db.bot_storage.storage_key == key['out'])) #This is the name of the variable in the database
-                    if value != None :
+                    if value:
                         data[key['in']] = value.storage_value
                     else :
                         data[key['in']] = None
@@ -802,6 +942,27 @@ def hook():
                         match, action = matches.split(":")
                         if chat_text == match:
                             #send_to that context and clear the direction
+
+                            flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                            if(int(flow_position_.storage_value)!=0):
+                                current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                                current_context_id = 0
+                                if(current_context_!=None):
+                                    current_context_id = current_context_.storage_value
+                                else:
+                                    default_context = db((db.bot_context.bot_id == bot.id)
+                                                         &(db.bot_context.name == 'default')).select().first()
+                                    current_context_id = default_context.id
+
+                                db.bot_context_heap.insert(storage_owner = chat_id,
+                                                           bot_id = bot.id,
+                                                           context_id = current_context_id,
+                                                           context_position = flow_position_.storage_value)
+
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
@@ -836,8 +997,9 @@ def hook():
             current_context = db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'current_context')).select().first()
-            default_context = db((db.bot_context.bot_id == bot.id)&(db.bot_context.name == 'default')).select().first()
+
             if not current_context:
+                default_context = db((db.bot_context.bot_id == bot.id)&(db.bot_context.name == 'default')).select().first()
                 current_context = default_context.id
             else:
                 current_context = int(current_context.storage_value)
@@ -854,7 +1016,29 @@ def hook():
             next_position = flow_position + 1
             #Make it back to 0
             if next_position >= len(context.context_json[context.name]):
-                next_position = 0
+                heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
+                               (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
+                if(heap_!= None):
+                    next_position=heap_.context_position
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'current_context',
+                                                                storage_value = heap_.context_id)
+                    db(db.bot_context_heap.id == heap_.id).delete()
+                else:
+                    next_position = 0
+                    #find the parent context and set to it
+                    if context.parent_context is not None:
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'current_context',
+                                                                storage_value = context.parent_context.id)
             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -867,43 +1051,78 @@ def hook():
                 flow_item_eval = context.context_json[context.name][flow_position - 1]
                 #SMART OBJECTS
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
-                    #Smart response validation request
-                    import requests
-                    params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
-                    response = requests.get('http://localhost:5000/parse', params=params)
-                    #context = response['intent']
-                    #import json
-                    json_string = response.json()
-                    context = json_string['intent']['name']
-                    #getting the conext name
-                    myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'respuesta3.txt')
-                    f = open(myfile,'a')
-                    f.write(context)
-                    f.write('\n'+' id:')
-                    f.write(str(bot.id)+'\n')
-                    if context:
-                        context_id = db((db.bot_context.bot_id == bot.id)
-                                        &(db.bot_intent.name == context)
-                                        &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
-                        if context_id:
-                            f.write(str(context_id)+'\n')
-                            #send_to that context and clear the direction
-                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                 (db.bot_internal_storage.bot_id == bot.id)&
-                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
-                                                                storage_owner = chat_id,
-                                                                bot_id = bot.id,
-                                                                storage_key = 'current_context',
-                                                                storage_value = int(context_id))
-                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                    #paradebug=os.path.join('/home/rasa/rasa_nlu/sample_configs/','debugricky.txt')
+                    #fdebug=open(paradebug,'w')
+                    validacion=0
+                    if ('validation' in flow_item_eval):
+                        #fdebug.write(flow_item_eval['validation']+'\n')
+                        validacion+=int(flow_item_eval['validation'])
+                    if(validacion==1):#verificamos si la entrada es de tipo texto
+                        #fdebug.write('Tipo texto: '+chat_text+'\n')
+                        validacion=1
+                    if(validacion==2):#verificamos si la entrada es de tipo numero
+                        fdebug.write(chat_text+'\n')
+                        import re
+                        if re.match("^\d+$",chat_text.lower()):
+                            #fdebug.write('Es un numero \n')
+                            validacion=2
+                        else:
+                            validacion=0
+                    if(validacion==3):#verificamos si la entrada es un email
+                        #fdebug.write(chat_text+'\n')
+                        import re
+                        if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                            #fdebug.write('email correcto \n')
+                            validacion=3
+                        else:
+                            validacion=0
+                    if(validacion==4):#verificamos si la entrada es de tipo fecha
+                        #fdebug.write(chat_text+'\n')
+                        import re
+                        if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                            #fdebug.write('fecha correcta \n')
+                            validacion=4
+                        else:
+                            validacion=0
+                    #fdebug.close()
+                    if(validacion<1):
+                        #Smart response validation request
+                        import requests
+                        params = (('q', chat_text),('project', 'Project_'+ str(bot.id)))
+                        response = requests.get('http://localhost:5000/parse', params=params)
+                        #context = response['intent']
+                        #import json
+                        json_string = response.json()
+                        context = json_string['intent']['name']
+                        #getting the conext name
+                        myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'Project_'+ str(bot.id)+'.log')
+                        f = open(myfile,'w')
+                        f.write(context)
+                        f.write('\n'+' id:')
+                        f.write(str(bot.id)+'\n')
+                        if context:
+                            context_id = db((db.bot_context.bot_id == bot.id)
+                                            &(db.bot_intent.name == context)
+                                            &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
+                            if context_id:
+                                f.write(str(context_id)+'\n')
+                                #send_to that context and clear the direction
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
-                                                                     (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
-                                                                    storage_key = 'flow_position',
-                                                                    storage_value = 0)
-                            return website(bot, conn)
-                    f.close()
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = int(context_id))
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                                        storage_owner = chat_id,
+                                                                        bot_id = bot.id,
+                                                                        storage_key = 'flow_position',
+                                                                        storage_value = 0)
+                                return website(bot, conn)
+                        f.close()
             #save the answer of the client in the bot_storage table
             #checking if the flow item has the "store" property
             if ('store' in flow_item):

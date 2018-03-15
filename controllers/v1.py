@@ -450,15 +450,21 @@ def api():
 def deleteContext():
     response.view = 'generic.' + request.extension
     def GET(context_id):
-        def recursiveDelete(contextid):
-            context_childs=db(db.bot_context.parent_context==context_id).select(db.bot_context.id)
+        def tryRecursiveDelete(contextid):
+            context_childs=db(db.bot_context.parent_context==contextid).select(db.bot_context.id,db.bot_context.name)
             for child in context_childs:
                 if(db(db.bot_intent.context_id == child.id).count()>0):
-                    return dict(data='error')
-                return recursiveDelete(child.id)
+                    return dict(data='error',cont=db(db.bot_context.id==child.id).select(db.bot_context.name),datos=db(db.bot_intent.context_id == child.id).select(db.bot_intent.name))
+                return tryRecursiveDelete(child.id)
             if(db(db.bot_intent.context_id == contextid).count()>0):
-                return dict(data='error')
+                return dict(data='error',cont=db(db.bot_context.id==contextid).select(db.bot_context.name),datos=db(db.bot_intent.context_id == contextid).select(db.bot_intent.name))
             return dict(data = 'ok')
+        def recursiveDelete(contextid):
+            context_childs=db(db.bot_context.parent_context==contextid).select(db.bot_context.id,db.bot_context.name)
+            for child in context_childs:
+                recursiveDelete(child.id)
+            db(db.bot_context.id==contextid).delete()
+            return dict(data='ok')
             #intent_ids = db(db.bot_intent.context_id == child.id).select(db.bot_intent.id)
             #for intent_id in intent_ids:
             #    db(db.intent_context_example.intent_id==intent_id.id).delete()
@@ -469,5 +475,90 @@ def deleteContext():
         #db(db.bot_intent.context_id == context_id).delete()
         #db(db.bot_context.parent_context==context_id).delete()
         #db(db.bot_context.id==context_id).delete()
+        #return dict(data = 'ok')
+        response=tryRecursiveDelete(context_id)
+        if(response!=dict(data='ok')):
+            return response
         return recursiveDelete(context_id)
+    return locals()
+
+@cors_allow
+@request.restful()
+def changeContextName():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(context_id,newName):
+        respuesta=''
+        contexts=db(db.bot_context.id==context_id).select(db.bot_context.name, db.bot_context.context_json)
+        for context in contexts:
+            respuesta=str(json.dumps(context.context_json)).replace('{"'+context.name+"\":",'{"'+newName+"\":")
+        db(db.bot_context.id==context_id).update(name=newName,context_json=json.loads(respuesta))
+        return dict(data=newName,cont=respuesta)
+    return locals()
+
+@cors_allow
+@request.restful()
+def existsContextName():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid,name):
+        return dict(cont=db((db.bot_context.bot_id==botid)&(db.bot_context.name==name)).count())
+    return locals()
+@cors_allow
+@request.restful()
+def existsIntentName():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid,name):
+        return dict(cont=db((db.bot_intent.bot_id==botid)&(db.bot_intent.name==name)).count())
+    return locals()
+@cors_allow
+@request.restful()
+def deleteMessengerConnector():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid,token):
+        respuesta=''
+        listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
+        connectors=listconnectors[0]['connectors']
+        for connector in connectors:
+            if(connector['type']=='messenger'):
+                connectors.remove(connector)
+        respuesta=connectors
+        db(db.bot.id==botid).update(connectors=respuesta)
+        return dict(cont='ok')
+    return locals()
+@cors_allow
+@request.restful()
+def deleteTelegramConnector():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid,token):
+        respuesta=''
+        listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
+        connectors=listconnectors[0]['connectors']
+        for connector in connectors:
+            if(connector['type']=='telegram'):
+                connectors.remove(connector)
+        respuesta=connectors
+        db(db.bot.id==botid).update(connectors=respuesta)
+        return dict(cont='ok')
+    return locals()
+@cors_allow
+@request.restful()
+def getBotTrainStatus():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid):
+        respuesta=db(db.bot.id==botid).select(db.bot.ai_configured)
+        return dict(cont=respuesta[0].ai_configured)
+    return locals()
+@cors_allow
+@request.restful()
+def setBotTrainStatus():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid,value):
+        respuesta=''
+        return dict(cont='ok')
     return locals()
