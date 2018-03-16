@@ -558,7 +558,39 @@ def getBotTrainStatus():
 def setBotTrainStatus():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid,value):
+    def GET(botid):
         respuesta=''
-        return dict(cont='ok')
+        import requests
+        params = (('q', 'hola'),('project', 'Project_'+ str(botid)))
+        response = requests.get('http://localhost:5000/parse', params=params)
+        if(str(response).split('[')[1].split(']')[0]=='200'):
+            respuesta='ok'
+            algo=db(db.bot.id==botid).update(ai_configured=True)
+        else:
+            respuesta=str(response)
+            db(db.bot.id==botid).update(ai_configured=False)
+        return dict(cont=respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def setFalseBotTrainStatus():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid):
+        respuesta='ok'
+        db(db.bot.id==botid).update(ai_configured=False)
+        return dict(cont=respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def getTrainLog():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botid):
+        respuesta='ok'
+        try:
+            fi=open('/home/rasa/rasa_nlu/sample_configs/Train_'+botid+'.log','r')
+            return dict(cont=str(fi.read()))
+        except:
+            return dict(cont='there is not a logfile. You have never train this bot!')
     return locals()
