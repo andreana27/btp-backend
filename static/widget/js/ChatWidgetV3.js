@@ -54,7 +54,7 @@
 	}
 
 // Now you can get the parameters you want like so:
-    var server ='https://a2.botprotec.com/backend/static/widget/';
+    var server ='https://demo-backend.botprotec.com/backend/static/widget/';
     var botName = document.getElementById("chat-widget-container").getAttribute("botName");
       console.log('Token: ' + params.urlToken);
       console.log('Token: ' + params.urlBotId);
@@ -62,7 +62,7 @@
     var botId = params.urlBotId;
     //var botId = document.getElementById("chat-widget-container").getAttribute("botId");
     //var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
-    var backend = 'https://a2.botprotec.com/backend/webhook/hook/';
+    var backend = 'https://demo-backend.botprotec.com/backend/webhook/hook/';
     var width = document.getElementById("chat-widget-container").getAttribute("width");
     var height = document.getElementById("chat-widget-container").getAttribute("height");
     var userId = '';

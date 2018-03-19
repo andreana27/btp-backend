@@ -7,6 +7,32 @@
 ## - user is required for authentication and authorization
 ## - download is for downloading files uploaded in the db (does streaming)
 #########################################################################
+def preCalificador():
+    xml = request.body.read()  # retrieve the raw POST data
+    return dict(message="hello from apiRest.py")
+
+import json
+def preCalificador():
+    #with open("json.txt","a") as f:
+    #    json.dump(request.vars,f)
+    dataB = request.body.read()
+    myfile = os.path.join('/home/rasa/rasa_nlu/data/examples/rasa/', 'result.json')
+    f = open(myfile,'w')
+    arrData = dataB.split("&")
+    for d in arrData:
+        params = d.split("=")
+        if(str(params[0])=='DPI'):
+            try:
+                num = long(str(params[1]))
+                if num%2 == 0:
+                    return str("Tu crédito ha sido pre-aprobado! Uno de nuestros agentes te contactará en las siguientes horas.")
+                else:
+                    return str("Lastimosamente tu crédito no ha sido pre-aprobado.")
+            except ValueError:
+                return str("No se pudo evaluar el código ingresado.")
+        f.write(str(params[0]))
+    f.close()
+    return str(dataB)
 
 def index():
     """
