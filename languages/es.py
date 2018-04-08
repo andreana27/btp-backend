@@ -290,6 +290,7 @@
 'Plugins': 'Plugins',
 'Powered by': 'Este sitio usa',
 'Preface': 'Prefacio',
+'previous %s rows': 'previous %s rows',
 'previous 100 rows': '100 filas anteriores',
 'Profile': 'Perfil',
 'Profile updated': 'Perfil actualizado',

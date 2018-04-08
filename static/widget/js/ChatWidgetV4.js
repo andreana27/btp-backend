@@ -41,10 +41,27 @@
     //var server = '//192.168.0.30:9090';
     //var server ='https://190.113.91.119/backend/static/widget/';
     //var backend = 'https://190.113.91.119/backend/webhook/hook/'
+    var params = {};
+    if (location.search) {
+		var parts = location.search.substring(1).split('&');
+            console.log('Params: ');
+		for (var i = 0; i < parts.length; i++) {
+            console.log('Parts: ');
+			var nv = parts[i].split('=');
+			if (!nv[0]) continue;
+			params[nv[0]] = nv[1] || true;
+		}
+	}
+
+// Now you can get the parameters you want like so:
     var server ='https://a2.botprotec.com/backend/static/widget/';
     var botName = document.getElementById("chat-widget-container").getAttribute("botName");
-    var botId = document.getElementById("chat-widget-container").getAttribute("botId");
-    var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
+      console.log('Token: ' + params.urlToken);
+      console.log('Token: ' + params.urlBotId);
+    var botToken = params.urlToken;
+    var botId = params.urlBotId;
+    //var botId = document.getElementById("chat-widget-container").getAttribute("botId");
+    //var botToken = document.getElementById("chat-widget-container").getAttribute("botToken");
     var backend = 'https://a2.botprotec.com/backend/webhook/hook/';
     var width = document.getElementById("chat-widget-container").getAttribute("width");
     var height = document.getElementById("chat-widget-container").getAttribute("height");

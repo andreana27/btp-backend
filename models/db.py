@@ -146,7 +146,8 @@ db.define_table('conversation',
                 Field('message_time', 'time'),
                 Field('origin', 'string'),
                 Field('medium', 'string'),
-               Field('content_type', 'string'))
+               Field('content_type', 'string'),
+               Field('need_chat_center','boolean',default=False))
 
 db.define_table('website_token',
                 Field('bot_id', 'reference bot'),
@@ -162,5 +163,14 @@ db.define_table('intent_context_example',
                 Field('intent_id', 'reference bot_intent'),
                 Field('example_text', 'string'))
 
+db.define_table('ai_request',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('request_date', 'date'),
+                Field('request_time', 'time'),
+                Field('medium', 'string'),
+                Field('status', 'string'),
+                Field('ccontent', 'string'),
+                Field('ai_response', 'string'))
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

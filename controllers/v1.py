@@ -594,3 +594,143 @@ def getTrainLog():
         except:
             return dict(cont='there is not a logfile. You have never train this bot!')
     return locals()
+@cors_allow
+@request.restful()
+def sendMessageToMesseger():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId,clientId,message):
+        def log_conversation(chat_id, chat_text, bot, type,content_type):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = 'messenger',
+                                       content_type = content_type)
+        def r(envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='messenger'):
+                    tok=conn['token']
+            uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token =tok)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        respuesta=r(dict(recipient = dict(id = clientId),message = dict(text = message)))
+        log_conversation(clientId, message, botId, 'sent','text')
+        return dict(cont=str(respuesta))
+    return locals()
+@cors_allow
+@request.restful()
+def sendMessageToTelegram():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId,clientId,message):
+        def log_conversation(chat_id, chat_text, bot, type,content_type):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = 'telegram',
+                                       content_type = content_type)
+        def r(method , envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='telegram'):
+                    tok=conn['token']
+            uri = 'https://api.telegram.org/bot{key}/{method}'.format(key = tok,method = method)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        respuesta=r('sendMessage', dict(chat_id = clientId,text = message))
+        log_conversation(clientId, message, botId, 'sent','text')
+        return dict(cont=str(respuesta))
+    return locals()
+@cors_allow
+@request.restful()
+def endChatCenter():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId,clientId):
+        def log_conversation(chat_id, chat_text, bot, type,content_type):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = 'telegram',
+                                       content_type = content_type)
+        log_conversation(clientId, 'end by chatcenter', botId, 'sent','text')
+        resp=db((db.conversation.bot_id==botId)&(db.conversation.storage_owner==clientId))
+        respuesta=resp.update(need_chat_center=False)
+        return dict(cont=str(respuesta))
+    return locals()
+@cors_allow
+@request.restful()
+def checkNeedChatCenter():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId):
+        respuesta =[]
+        resp=db(db.conversation.bot_id==botId)
+        needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner, distinct=True)
+        for need in needchat:
+            contactid=need['storage_owner']
+            needchat=need['need_chat_center']
+            respuesta.append(dict(owner = contactid,chatcenter = needchat))
+        return dict(cont=(respuesta))
+    return locals()
+@cors_allow
+@request.restful()
+def getAiRequests():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId):
+        respuesta =[]
+        resp=db(db.ai_request.bot_id==botId)
+        requests=resp.select(db.ai_request.status,
+                             db.ai_request.storage_owner,
+                             db.ai_request.request_date,
+                             db.ai_request.request_time,
+                             db.ai_request.medium,
+                             db.ai_request.ccontent,
+                             db.ai_request.ai_response)
+        for request in requests:
+            respuesta.append(dict(owner = request['storage_owner'],
+                                  status = request['status'],
+                                  date=request['request_date'],
+                                  time=request['request_time'],
+                                  medium=request['medium'],
+                                  content=request['ccontent'],
+                                  ai_response=request['ai_response']
+                                 ))
+        return dict(cont=(respuesta))
+    return locals()
