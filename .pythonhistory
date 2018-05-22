@@ -5,3 +5,6 @@ var
 json.dumps
 import json
 json.dumps
+db((db.bot_storage.bot_id==10)).select(db.bot_storage.storage_owner, distinct = True)
+148/166.0
+153/166.0

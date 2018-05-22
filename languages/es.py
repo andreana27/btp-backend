@@ -97,6 +97,7 @@
 'Created By': 'Creado Por',
 'Created On': 'Creado En',
 'CSV (hidden cols)': 'CSV (columnas ocultas)',
+'CSV export': 'CSV export',
 'Current request': 'Solicitud en curso',
 'Current response': 'Respuesta en curso',
 'Current session': 'Sesión en curso',
