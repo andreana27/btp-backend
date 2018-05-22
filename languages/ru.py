@@ -1,4 +1,4 @@
-# coding: utf8
+# -*- coding: utf-8 -*-
 {
 '!langcode!': 'ru',
 '!langname!': 'Русский',
@@ -31,6 +31,7 @@
 'Are you sure you want to delete this object?': 'Вы уверены, что хотите удалить этот объект?',
 'Available Databases and Tables': 'Базы данных и таблицы',
 'Buy this book': 'Buy this book',
+"Buy web2py's book": "Buy web2py's book",
 'cache': 'cache',
 'Cache': 'Cache',
 'Cache Keys': 'Cache Keys',
@@ -44,6 +45,7 @@
 'Client IP': 'Client IP',
 'Community': 'Community',
 'Components and Plugins': 'Components and Plugins',
+'Config.ini': 'Config.ini',
 'Controller': 'Controller',
 'Copyright': 'Copyright',
 'Current request': 'Текущий запрос',
@@ -60,6 +62,7 @@
 'Deployment Recipes': 'Deployment Recipes',
 'Description': 'Описание',
 'design': 'дизайн',
+'Design': 'Design',
 'DISK': 'DISK',
 'Disk Cache Keys': 'Disk Cache Keys',
 'Disk Cleared': 'Disk Cleared',
@@ -71,6 +74,7 @@
 'Edit current record': 'Редактировать текущую запись',
 'Edit Profile': 'Редактировать профиль',
 'Email and SMS': 'Email and SMS',
+'Enter an integer between %(min)g and %(max)g': 'Enter an integer between %(min)g and %(max)g',
 'enter an integer between %(min)g and %(max)g': 'enter an integer between %(min)g and %(max)g',
 'Errors': 'Errors',
 'export as csv file': 'экспорт в  csv-файл',
@@ -81,6 +85,7 @@
 'Group ID': 'Group ID',
 'Groups': 'Groups',
 'Hello World': 'Заработало!',
+'Helping web2py': 'Helping web2py',
 'Home': 'Home',
 'How did you get here?': 'How did you get here?',
 'import': 'import',
@@ -120,6 +125,7 @@
 'now': 'сейчас',
 'Object or table name': 'Object or table name',
 'Old password': 'Старый пароль',
+'Online book': 'Online book',
 'Online examples': 'примеры он-лайн',
 'or import from csv file': 'или импорт из csv-файла',
 'Origin': 'Происхождение',
