@@ -172,5 +172,19 @@ db.define_table('ai_request',
                 Field('status', 'string'),
                 Field('ccontent', 'string'),
                 Field('ai_response', 'string'))
+db.define_table('bot_checkpoint',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('checkpoint_date', 'date'),
+                Field('checkpoint_time', 'time'),
+                Field('checkpoint_name', 'string'),
+                Field('medium', 'string'))
+db.define_table('bot_phantom_context',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('isActive', 'boolean', default = True),
+                Field('name', 'string'),
+                Field('flow_position', 'string'),
+                Field('context_json', 'json'))
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

@@ -734,3 +734,163 @@ def getAiRequests():
                                  ))
         return dict(cont=(respuesta))
     return locals()
+@cors_allow
+@request.restful()
+def sendMessageToBroadcast():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId,message):
+        def log_conversation(chat_id, chat_text, bot, type,content_type,medi,sta):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = medi,
+                                       content_type = content_type,
+                                      need_chat_center=sta)
+        def r_telegram(method , envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='telegram'):
+                    tok=conn['token']
+            uri = 'https://api.telegram.org/bot{key}/{method}'.format(key = tok,method = method)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        def r_messenger(envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='messenger'):
+                    tok=conn['token']
+            uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token =tok)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        #respuesta=r_messenger(dict(recipient = dict(id = clientId),message = dict(text = message)))
+        #respuesta=r('sendMessage', dict(chat_id = 'Broadcast',text = message))
+        users = db((db.conversation.bot_id==botId)&(db.conversation.medium=='telegram')).select(db.conversation.storage_owner,distinct=True)
+        log_conversation('Broadcast', message, botId, 'sent','text','broadcast',True)
+        for user in users:
+            r_telegram('sendMessage', dict(chat_id = user.storage_owner,text = message))
+            log_conversation(user.storage_owner,message,botId,'sent','text','telegram',False)
+        users_ms = db((db.conversation.bot_id==botId)&(db.conversation.medium=='messenger')).select(db.conversation.storage_owner,distinct=True)
+        for user in users_ms:
+            r_messenger(dict(recipient = dict(id = user.storage_owner),message = dict(text = message)))
+            log_conversation(user.storage_owner,message,botId,'sent','text','messenger',False)
+        return dict(cont='end broadcast')
+    return locals()
+@cors_allow
+@request.restful()
+def getStatistics():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId, start , end):
+        telegram_Total=-1
+        messenger_Total=-1
+        website_Total=-1
+        checkpoints=[]
+        if(start=='0'):
+            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')).count()
+            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')).count()
+            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')).count()
+            che=db((db.bot_checkpoint.bot_id==botId)).select(db.bot_checkpoint.checkpoint_name)
+            for c in che:
+                val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)).count()
+                checkpoints.append(dict(name=c.checkpoint_name,val=val))
+        elif(start=='1'):
+            import datetime
+            current_date = datetime.datetime.now()
+            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram') & (db.conversation.message_date==current_date)).count()
+            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')& (db.conversation.message_date==current_date)).count()
+            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')& (db.conversation.message_date==current_date)).count()
+            che=db((db.bot_checkpoint.bot_id==botId)& (db.bot_checkpoint.checkpoint_date==current_date)).select(db.bot_checkpoint.checkpoint_name)
+            for c in che:
+                val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)&
+                       (db.bot_checkpoint.checkpoint_date==current_date)).count()
+                checkpoints.append(dict(name=c.checkpoint_name,val=val))
+        else:
+            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')
+                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')
+                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')
+                            & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+            che=db((db.bot_checkpoint.bot_id==botId)
+                  & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).select(db.bot_checkpoint.checkpoint_name)
+            for c in che:
+                val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)
+                      & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).count()
+                checkpoints.append(dict(name=c.checkpoint_name,val=val))
+        return dict(telegram_t=telegram_Total,messenger_t=messenger_Total,website_t=website_Total, start=start,end=end,check=checkpoints)
+    return locals()
+@cors_allow
+@request.restful()
+def botClone():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(botId,name,full):
+        cnt=[]
+        r=db(db.bot.id==botId).select(db.bot.bot_language,db.bot.picture)
+        newBotId=db.bot.insert(name=name,
+                            bot_language=r[0].bot_language,
+                           picture=r[0].picture)
+        contexts=db(db.bot_context.bot_id==botId).select(db.bot_context.ALL)
+        for context in contexts:
+            intents=db(db.bot_intent.context_id==context.id).select(db.bot_intent.ALL)
+            newContextId=db.bot_context.insert(bot_id=newBotId,parent_context=context.parent_context,
+                                               isdefault=context.isdefault,name=context.name,
+                                               context_json=context.context_json)
+            cnt.append(dict(new=newContextId, old=context.id))
+            for intent in intents:
+                newIntentId=db.bot_intent.insert(bot_id=newBotId,context_id=newContextId,name=intent.name)
+                if(full==True):
+                    examples=db(db.intent_context_example.intent_id==intent.id).select(db.intent_context_example.ALL)
+                    for example in examples:
+                        db.intent_context_example.insert(intent_id=newIntentId,example_text=example.example_text)
+        for c in cnt:
+            db((db.bot_context.bot_id==newBotId)&(db.bot_context.parent_context==c['old'])).update(parent_context=c['new'])
+        return dict(cont=(r),cn=contexts,inte=intents,act=cnt,newbot=newBotId)
+    return locals()
+@cors_allow
+@request.restful()
+def apiVariables():
+    import json
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        import json
+        r=''
+        h=json.loads(vars['variables'])
+        botId=vars['botid']
+        clientId=vars['clientid']
+        for key,value in h.items():
+            db.bot_storage.insert(bot_id = botId,
+                                       storage_owner = clientId,
+                                       storage_key = key,
+                                       storage_value = value)
+        return dict(status= 'ok',cliente=clientId,bot=botId)
+    return locals()
+@cors_allow
+@request.restful()
+def apiPhantomContext():
+    import json
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        import json
+        h=json.loads(vars['jsonContext'])
+        botId=vars['botid']
+        clientId=vars['clientid']
+        name=vars['name']
+        db.bot_phantom_context.insert(bot_id = botId,storage_owner = clientId,context_json = (h),name=name,flow_position=0)
+        return dict(context= str(h),cliente=clientId,bot=botId)
+    return locals()
