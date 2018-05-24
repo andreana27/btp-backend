@@ -574,7 +574,11 @@ def hook():
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
-                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                            retrys=0
+                            try:
+                                retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                            except:
+                                retrys=0
                             if(retrys>0):
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
@@ -585,8 +589,7 @@ def hook():
                                                             storage_value = flow_position - 1)
                                 return messenger(bot, conn)
                             else:
-                                r('sendMessage', dict(chat_id = chat_id,
-                                                     text = 'se han acabado los retrys enviando al contexto ... '))
+                                #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
                                 return messenger(bot, conn)
                     if flow_item_eval['type'] == 'validationReply':
                         validacion=0
@@ -634,7 +637,11 @@ def hook():
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'retryReply')).select(db.bot_internal_storage.storage_value)
-                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                            retrys=0
+                            try:
+                                retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                            except:
+                                retrys=0
                             if(retrys>0):
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
@@ -645,8 +652,7 @@ def hook():
                                                             storage_value = flow_position - 1)
                                 return messenger(bot, conn)
                             else:
-                                r('sendMessage', dict(chat_id = chat_id,
-                                                     text = 'se han acabado los retrys enviando al contexto ... '))
+                                #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
                                 return messenger(bot, conn)
                     if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                         validacion=0
@@ -1340,7 +1346,11 @@ def hook():
                         selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
-                        retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        retrys=0
+                        try:
+                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        except:
+                            retrys=0
                         if(retrys>0):
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -1351,8 +1361,7 @@ def hook():
                                                         storage_value = flow_position - 1)
                             return telegram(bot, conn)
                         else:
-                            r('sendMessage', dict(chat_id = chat_id,
-                                                 text = 'se han acabado los retrys enviando al contexto ... '))
+                            #r('sendMessage', dict(chat_id = chat_id,text = '.'))
                             return telegram(bot, conn)
                 if flow_item_eval['type'] == 'validationReply':
                     validacion=0
@@ -1400,7 +1409,11 @@ def hook():
                         selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'retryReply')).select(db.bot_internal_storage.storage_value)
-                        retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        retrys=0
+                        try:
+                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        except:
+                            retrys=0
                         if(retrys>0):
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -1411,8 +1424,7 @@ def hook():
                                                         storage_value = flow_position - 1)
                             return telegram(bot, conn)
                         else:
-                            r('sendMessage', dict(chat_id = chat_id,
-                                                 text = 'se han acabado los retrys enviando al contexto ... '))
+                            #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
                             return telegram(bot, conn)
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                     validacion=0
@@ -2067,7 +2079,11 @@ def hook():
                         selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'retryReply')).select(db.bot_internal_storage.storage_value)
-                        retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        retrys=0
+                        try:
+                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        except:
+                            retrys=0
                         if(retrys>0):
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -2078,8 +2094,7 @@ def hook():
                                                         storage_value = flow_position - 1)
                             return website(bot, conn)
                         else:
-                            r('sendMessage', dict(chat_id = chat_id,
-                                                 text = 'se han acabado los retrys enviando al contexto ... '))
+                            #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
                             return website(bot, conn)
                 if flow_item_eval['type'] == 'validationText':
                     validacion=0
@@ -2127,7 +2142,11 @@ def hook():
                         selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
-                        retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        retrys=0
+                        try:
+                            retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                        except:
+                            retrys=0
                         if(retrys>0):
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -2138,8 +2157,7 @@ def hook():
                                                         storage_value = flow_position - 1)
                             return website(bot, conn)
                         else:
-                            r('sendMessage', dict(chat_id = chat_id,
-                                                 text = 'se han acabado los retrys enviando al contexto ... '))
+                            #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
                             return website(bot, conn)
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                     #paradebug=os.path.join('/home/rasa/rasa_nlu/sample_configs/','debugricky.txt')
