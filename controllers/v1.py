@@ -799,40 +799,64 @@ def getStatistics():
         telegram_Total=-1
         messenger_Total=-1
         website_Total=-1
+        telegram_clients=-1
+        messenger_clients=-1
+        website_clients=-1
         checkpoints=[]
         if(start=='0'):
-            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')).count()
-            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')).count()
-            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')).count()
-            che=db((db.bot_checkpoint.bot_id==botId)).select(db.bot_checkpoint.checkpoint_name)
+            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')&(db.conversation.origin=='client')).count()
+            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')).count()
+            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')&(db.conversation.origin=='client')).count()
+            che=db((db.bot_checkpoint.bot_id==botId)).select(db.bot_checkpoint.checkpoint_name,distinct=True)
             for c in che:
                 val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)).count()
-                checkpoints.append(dict(name=c.checkpoint_name,val=val))
+                clients=len(db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)).select(db.bot_checkpoint.storage_owner,distinct=True))
+                checkpoints.append(dict(name=c.checkpoint_name,val=val,clients=clients))
+            telegram_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')&(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
+            messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
+            website_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')&(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
         elif(start=='1'):
             import datetime
             current_date = datetime.datetime.now()
-            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram') & (db.conversation.message_date==current_date)).count()
-            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')& (db.conversation.message_date==current_date)).count()
-            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')& (db.conversation.message_date==current_date)).count()
-            che=db((db.bot_checkpoint.bot_id==botId)& (db.bot_checkpoint.checkpoint_date==current_date)).select(db.bot_checkpoint.checkpoint_name)
+            telegram_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')& (db.conversation.message_date==current_date)
+                                    &(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
+            messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')& (db.conversation.message_date==current_date)
+                                    &(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
+            website_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')& (db.conversation.message_date==current_date)
+                                    &(db.conversation.origin=='client')).select(db.conversation.storage_owner,distinct=True))
+            telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram') & (db.conversation.message_date==current_date)&(db.conversation.origin=='client')).count()
+            messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')& (db.conversation.message_date==current_date)&(db.conversation.origin=='client')).count()
+            website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')& (db.conversation.message_date==current_date)&(db.conversation.origin=='client')).count()
+            che=db((db.bot_checkpoint.bot_id==botId)& (db.bot_checkpoint.checkpoint_date==current_date)).select(db.bot_checkpoint.checkpoint_name,distinct=True)
             for c in che:
                 val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)&
                        (db.bot_checkpoint.checkpoint_date==current_date)).count()
-                checkpoints.append(dict(name=c.checkpoint_name,val=val))
+                clients=len(db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)&
+                       (db.bot_checkpoint.checkpoint_date==current_date)).select(db.bot_checkpoint.storage_owner,distinct=True))
+                checkpoints.append(dict(name=c.checkpoint_name,val=val,clients=clients))
         else:
+            telegram_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')&(db.conversation.origin=='client')
+                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))
+            messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')
+                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))
+            website_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')&(db.conversation.origin=='client')
+                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))
             telegram_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='telegram')
-                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)&(db.conversation.origin=='client')).count()
             messenger_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')
-                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+                              & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)&(db.conversation.origin=='client')).count()
             website_Total=db((db.conversation.bot_id==botId) & (db.conversation.medium=='website')
-                            & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).count()
+                            & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)&(db.conversation.origin=='client')).count()
             che=db((db.bot_checkpoint.bot_id==botId)
-                  & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).select(db.bot_checkpoint.checkpoint_name)
+                  & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).select(db.bot_checkpoint.checkpoint_name,distinct=True)
             for c in che:
                 val=db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)
                       & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).count()
-                checkpoints.append(dict(name=c.checkpoint_name,val=val))
-        return dict(telegram_t=telegram_Total,messenger_t=messenger_Total,website_t=website_Total, start=start,end=end,check=checkpoints)
+                checkpoints.append(dict(name=c.checkpoint_name,val=val,clients=clients))
+                clients=len(db((db.bot_checkpoint.bot_id==botId)&(db.bot_checkpoint.checkpoint_name==c.checkpoint_name)
+                      & (db.bot_checkpoint.checkpoint_date>=start)& (db.bot_checkpoint.checkpoint_date<=end)).select(db.bot_checkpoint.storage_owner,distinct=True))
+        return dict(telegram_t=telegram_Total,messenger_t=messenger_Total,website_t=website_Total, start=start,end=end,check=checkpoints,
+                    telegram_clients=telegram_clients,messenger_clients=messenger_clients,website_clients=website_clients)
     return locals()
 @cors_allow
 @request.restful()

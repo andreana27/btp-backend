@@ -204,7 +204,7 @@ def hook():
                                        checkpoint_time = current_time,
                                        checkpoint_name = flow_item['content'],
                                        medium = 'messenger')
-                return 0
+                return messenger(bot,conn)
             def attachment(chat_id, flow_item, bot, **vars):
                 log_conversation(chat_id, flow_item['url'], bot.id, 'sent','attachment')
                 media_type = flow_item['media_type']
@@ -440,7 +440,16 @@ def hook():
                         #Evaluate chat_text with send_to
                         for matches in send_to.split(","):
                             match, action = matches.split(":")
-                            if chat_text == match:
+                            import unicodedata
+                            def fix(cadena):
+                                cadena2=''
+                                for c in cadena:
+                                    try:
+                                        cadena2+=c.decode().encode('utf-8')
+                                    except:
+                                        cadena2+=''
+                                return cadena2
+                            if str(fix(chat_text)).strip() == str(fix(match)).strip():
                                 flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
@@ -521,6 +530,14 @@ def hook():
                 #SMART OBJECTS
                 if flow_position > 0:
                     flow_item_eval = context.context_json[context.name][flow_position - 1]
+                    if flow_item_eval['type'] == 'checkPoint':
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                        storage_owner = chat_id,
+                                                        bot_id = bot.id,
+                                                        storage_key = 'flow_position',
+                                                        storage_value = next_position)
                     if flow_item_eval['type'] == 'chatCenter':
                         if(chat_text=='Yes'):
                             db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id)).update(need_chat_center=True)
@@ -1034,7 +1051,7 @@ def hook():
                                        checkpoint_time = current_time,
                                        checkpoint_name = flow_item['content'],
                                        medium = 'telegram')
-                return 0
+                return telegram(bot, conn)
             def text(chat_id, flow_item, bot,**vars):
                 keyboard = []
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
@@ -1220,7 +1237,17 @@ def hook():
                     #Evaluate chat_text with send_to
                     for matches in send_to.split(","):
                         match, action = matches.split(":")
-                        if chat_text == match:
+                        import unicodedata
+                        def fix(cadena):
+                            cadena2=''
+                            for c in cadena:
+                                try:
+                                    cadena2+=c.decode().encode('utf-8')
+                                except:
+                                    cadena2+=''
+                            return cadena2
+                        #r('sendMessage', dict(chat_id = chat_id,text = fix(chat_text)+'____'+fix(match)))
+                        if str(fix(chat_text)).strip() == str(fix(match)).strip():
                             #send_to that context and clear the direction
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
@@ -1270,7 +1297,11 @@ def hook():
                 flow_position = int(flow_position.storage_value)
             else:
                 flow_position = 0
-            flow_item = context.context_json[context.name][flow_position]
+            flow_item = None
+            try:
+                flow_item = context.context_json[context.name][flow_position]
+            except:
+                flow_item = None
             next_position = flow_position + 1
             #Make it back to 0
             if next_position >= len(context.context_json[context.name]):
@@ -1295,6 +1326,14 @@ def hook():
             #SMART OBJECTS
             if flow_position > 0:
                 flow_item_eval = context.context_json[context.name][flow_position - 1]
+                if flow_item_eval['type'] == 'checkPoint':
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                        storage_owner = chat_id,
+                                                        bot_id = bot.id,
+                                                        storage_key = 'flow_position',
+                                                        storage_value = next_position)
                 if flow_item_eval['type'] == 'chatCenter':
                         if(chat_text=='Yes'):
                             db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id)).update(need_chat_center=True)
@@ -1776,7 +1815,7 @@ def hook():
                                        checkpoint_time = current_time,
                                        checkpoint_name = flow_item['content'],
                                        medium = 'website')
-                return 0
+                return website(bot, conn)
             def smartText(chat_id, flow_item, bot,**vars):
                 keyboard = []
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
@@ -1919,7 +1958,16 @@ def hook():
                     #Evaluate chat_text with send_to
                     for matches in send_to.split(","):
                         match, action = matches.split(":")
-                        if chat_text == match:
+                        import unicodedata
+                        def fix(cadena):
+                            cadena2=''
+                            for c in cadena:
+                                try:
+                                    cadena2+=c.decode().encode('utf-8')
+                                except:
+                                    cadena2+=''
+                            return cadena2
+                        if str(fix(chat_text)).strip() == str(fix(match)).strip():
                             #send_to that context and clear the direction
 
                             flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -1991,7 +2039,11 @@ def hook():
                 flow_position = int(flow_position.storage_value)
             else:
                 flow_position = 0
-            flow_item = context.context_json[context.name][flow_position]
+            flow_item = None
+            try:
+                flow_item = context.context_json[context.name][flow_position]
+            except:
+                flow_item = None
             next_position = flow_position + 1
             #Make it back to 0
             if next_position >= len(context.context_json[context.name]):
@@ -2033,6 +2085,14 @@ def hook():
             if flow_position > 0:
                 flow_item_eval = context.context_json[context.name][flow_position - 1]
                 #SMART OBJECTS
+                if flow_item_eval['type'] == 'checkPoint':
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                         (db.bot_internal_storage.bot_id == bot.id)&
+                                                         (db.bot_internal_storage.storage_key == 'flow_position'),
+                                                        storage_owner = chat_id,
+                                                        bot_id = bot.id,
+                                                        storage_key = 'flow_position',
+                                                        storage_value = next_position)
                 if flow_item_eval['type'] == 'validationReply':
                     validacion=0
                     if ('validation' in flow_item_eval):
