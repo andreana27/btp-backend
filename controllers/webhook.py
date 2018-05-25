@@ -537,7 +537,7 @@ def hook():
                                                         storage_owner = chat_id,
                                                         bot_id = bot.id,
                                                         storage_key = 'flow_position',
-                                                        storage_value = next_position)
+                                                        storage_value = flow_position + 1)
                     if flow_item_eval['type'] == 'chatCenter':
                         if(chat_text=='Yes'):
                             db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id)).update(need_chat_center=True)
