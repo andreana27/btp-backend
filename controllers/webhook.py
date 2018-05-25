@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# intente algo como
+# intente algo como\
 @cors_allow
 @request.restful()
 def hook():
@@ -554,6 +554,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         if(validacion==2):#verificamos si la entrada es de tipo numero
                             import re
                             if re.match("^\d+$",chat_text.lower()):
@@ -562,6 +565,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==3):#verificamos si la entrada es un email
@@ -573,6 +579,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -584,6 +593,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         #fdebug.close()
@@ -603,11 +615,15 @@ def hook():
                                                             storage_owner = chat_id,
                                                             bot_id = bot.id,
                                                             storage_key = 'flow_position',
-                                                            storage_value = flow_position - 1)
-                                return messenger(bot, conn)
+                                                            storage_value = flow_position)
+                                flow_position=flow_position-1
+                                flow_item = context.context_json[context.name][flow_position]
+                                #return messenger(bot, conn)
                             else:
                                 #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                                return messenger(bot, conn)
+                                vals=2
+                                return 0
+                                #return messenger(bot, conn)
                     if flow_item_eval['type'] == 'validationReply':
                         validacion=0
                         if ('validation' in flow_item_eval):
@@ -617,6 +633,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         if(validacion==2):#verificamos si la entrada es de tipo numero
                             import re
                             if re.match("^\d+$",chat_text.lower()):
@@ -625,6 +644,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==3):#verificamos si la entrada es un email
@@ -636,6 +658,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -647,6 +672,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         #fdebug.close()
@@ -666,11 +694,15 @@ def hook():
                                                             storage_owner = chat_id,
                                                             bot_id = bot.id,
                                                             storage_key = 'flow_position',
-                                                            storage_value = flow_position - 1)
-                                return messenger(bot, conn)
+                                                            storage_value = flow_position)
+                                flow_position=flow_position-1
+                                flow_item = context.context_json[context.name][flow_position]
+                                #return messenger(bot, conn)
                             else:
                                 #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                                return messenger(bot, conn)
+                                valsss=0
+                                return 0
+                                #return messenger(bot, conn)
                     if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                         validacion=0
                         if ('validation' in flow_item_eval):
@@ -903,6 +935,7 @@ def hook():
                 keyboard = []
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 retrys=0
+                #r('sendMessage', dict(chat_id = chat_id,text = 'def'))
                 try:
                     selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
@@ -912,6 +945,7 @@ def hook():
                     retrys=int(flow_item['retry'])
                     if(int(flow_item['retry'])==0):
                         retrys=10000
+                #r('sendMessage', dict(chat_id = chat_id,text = 'numero de retrys '+str(retrys)))
                 if(retrys<1):
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
@@ -1348,6 +1382,9 @@ def hook():
                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                     if(validacion==2):#verificamos si la entrada es de tipo numero
                         import re
                         if re.match("^\d+$",chat_text.lower()):
@@ -1356,6 +1393,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==3):#verificamos si la entrada es un email
@@ -1367,6 +1407,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -1378,6 +1421,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     #fdebug.close()
@@ -1397,11 +1443,15 @@ def hook():
                                                         storage_owner = chat_id,
                                                         bot_id = bot.id,
                                                         storage_key = 'flow_position',
-                                                        storage_value = flow_position - 1)
-                            return telegram(bot, conn)
+                                                        storage_value = flow_position)
+                            #return telegram(bot, conn)
+                            flow_position=flow_position-1
+                            flow_item = context.context_json[context.name][flow_position]
                         else:
                             #r('sendMessage', dict(chat_id = chat_id,text = '.'))
-                            return telegram(bot, conn)
+                            valss=9
+                            return 0
+                            #return telegram(bot, conn)
                 if flow_item_eval['type'] == 'validationReply':
                     validacion=0
                     if ('validation' in flow_item_eval):
@@ -1411,6 +1461,9 @@ def hook():
                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                     if(validacion==2):#verificamos si la entrada es de tipo numero
                         import re
                         if re.match("^\d+$",chat_text.lower()):
@@ -1419,6 +1472,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==3):#verificamos si la entrada es un email
@@ -1430,6 +1486,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -1441,6 +1500,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                               (db.bot_internal_storage.bot_id == bot.id)&
+                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     #fdebug.close()
@@ -1460,11 +1522,15 @@ def hook():
                                                         storage_owner = chat_id,
                                                         bot_id = bot.id,
                                                         storage_key = 'flow_position',
-                                                        storage_value = flow_position - 1)
-                            return telegram(bot, conn)
+                                                        storage_value = flow_position)
+                            flow_position=flow_position-1
+                            flow_item = context.context_json[context.name][flow_position]
+                            #return telegram(bot, conn)
                         else:
                             #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                            return telegram(bot, conn)
+                            valss=9
+                            return 0
+                            #return telegram(bot, conn)
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                     validacion=0
                     if ('validation' in flow_item_eval):
@@ -2151,11 +2217,14 @@ def hook():
                                                         storage_owner = chat_id,
                                                         bot_id = bot.id,
                                                         storage_key = 'flow_position',
-                                                        storage_value = flow_position - 1)
-                            return website(bot, conn)
+                                                        storage_value = flow_position)
+                            flow_position=flow_position-1
+                            flow_item = context.context_json[context.name][flow_position]
+                            #return website(bot, conn)
                         else:
                             #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                            return website(bot, conn)
+                            #return website(bot, conn)
+                            return 0
                 if flow_item_eval['type'] == 'validationText':
                     validacion=0
                     if ('validation' in flow_item_eval):
@@ -2165,6 +2234,9 @@ def hook():
                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                     if(validacion==2):#verificamos si la entrada es de tipo numero
                         import re
                         if re.match("^\d+$",chat_text.lower()):
@@ -2173,6 +2245,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==3):#verificamos si la entrada es un email
@@ -2184,6 +2259,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -2195,6 +2273,9 @@ def hook():
                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         else:
                             validacion=0
                     #fdebug.close()
@@ -2214,11 +2295,15 @@ def hook():
                                                         storage_owner = chat_id,
                                                         bot_id = bot.id,
                                                         storage_key = 'flow_position',
-                                                        storage_value = flow_position - 1)
-                            return website(bot, conn)
+                                                        storage_value = flow_position)
+                            flow_position=flow_position-1
+                            flow_item = context.context_json[context.name][flow_position]
+                            #return website(bot, conn)
                         else:
                             #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                            return website(bot, conn)
+                            vasss=99
+                            return 0
+                            #return website(bot, conn)
                 if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                     #paradebug=os.path.join('/home/rasa/rasa_nlu/sample_configs/','debugricky.txt')
                     #fdebug=open(paradebug,'w')
