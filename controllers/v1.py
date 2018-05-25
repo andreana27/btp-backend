@@ -864,6 +864,7 @@ def botClone():
     import json
     response.view = 'generic.' + request.extension
     def GET(botId,name,full):
+        respss=''
         cnt=[]
         r=db(db.bot.id==botId).select(db.bot.bot_language,db.bot.picture)
         newBotId=db.bot.insert(name=name,
@@ -878,13 +879,14 @@ def botClone():
             cnt.append(dict(new=newContextId, old=context.id))
             for intent in intents:
                 newIntentId=db.bot_intent.insert(bot_id=newBotId,context_id=newContextId,name=intent.name)
-                if(full==True):
+                if(full=='true'):
+                    respss='entroa full'
                     examples=db(db.intent_context_example.intent_id==intent.id).select(db.intent_context_example.ALL)
                     for example in examples:
                         db.intent_context_example.insert(intent_id=newIntentId,example_text=example.example_text)
         for c in cnt:
             db((db.bot_context.bot_id==newBotId)&(db.bot_context.parent_context==c['old'])).update(parent_context=c['new'])
-        return dict(cont=(r),cn=contexts,inte=intents,act=cnt,newbot=newBotId)
+        return dict(cont=(r),cn=contexts,inte=intents,act=cnt,newbot=newBotId,status=respss)
     return locals()
 @cors_allow
 @request.restful()
