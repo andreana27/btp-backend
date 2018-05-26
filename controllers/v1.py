@@ -596,7 +596,7 @@ def getTrainLog():
     return locals()
 @cors_allow
 @request.restful()
-def sendMessageToMesseger():
+def sendMessageToMessegerg():
     import json
     response.view = 'generic.' + request.extension
     def GET(botId,clientId,message):
@@ -632,7 +632,7 @@ def sendMessageToMesseger():
     return locals()
 @cors_allow
 @request.restful()
-def sendMessageToTelegram():
+def sendMessageToTelegramg():
     import json
     response.view = 'generic.' + request.extension
     def GET(botId,clientId,message):
@@ -665,6 +665,86 @@ def sendMessageToTelegram():
         respuesta=r('sendMessage', dict(chat_id = clientId,text = message))
         log_conversation(clientId, message, botId, 'sent','text')
         return dict(cont=str(respuesta))
+    return locals()
+@cors_allow
+@request.restful()
+def sendMessageToMesseger():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        #creates the file for the ai engine
+        botId = vars['bot_id']
+        message = vars['message']
+        clientId=vars['clientid']
+        def log_conversation(chat_id, chat_text, bot, type,content_type):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = 'messenger',
+                                       content_type = content_type)
+        def r(envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='messenger'):
+                    tok=conn['token']
+            uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token =tok)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        respuesta=r(dict(recipient = dict(id = clientId),message = dict(text = message)))
+        log_conversation(clientId, message, botId, 'sent','text')
+        return dict(cont=str(respuesta))
+        return dict(result = 'ok')
+    return locals()
+@cors_allow
+@request.restful()
+def sendMessageToTelegram():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):
+        #creates the file for the ai engine
+        botId = vars['bot_id']
+        message = vars['message']
+        clientId=vars['clientid']
+        def log_conversation(chat_id, chat_text, bot, type,content_type):
+                msg_origin = 'client'
+                if (type == 'sent'):
+                    msg_origin = 'chatCenter'
+                import datetime
+                current_date = datetime.datetime.now()
+                current_time = datetime.datetime.now().time()
+                db.conversation.insert(bot_id = bot,
+                                       storage_owner = chat_id,
+                                       ctype = type,
+                                       ccontent = chat_text,
+                                       message_date = current_date,
+                                       message_time = current_time,
+                                       origin = msg_origin,
+                                       medium = 'telegram',
+                                       content_type = content_type)
+        def r(method , envelope):
+            import requests
+            tok=''
+            connectors=db(db.bot.id==botId).select(db.bot.connectors)
+            for conn in connectors[0].connectors:
+                if(conn['type']=='telegram'):
+                    tok=conn['token']
+            uri = 'https://api.telegram.org/bot{key}/{method}'.format(key = tok,method = method)
+            resu = requests.post(uri, json=envelope)
+            return resu
+        respuesta=r('sendMessage', dict(chat_id = clientId,text = message))
+        log_conversation(clientId, message, botId, 'sent','text')
+        return dict(cont=str(respuesta))
+        return dict(result = 'ok')
     return locals()
 @cors_allow
 @request.restful()
@@ -737,9 +817,11 @@ def getAiRequests():
 @cors_allow
 @request.restful()
 def sendMessageToBroadcast():
-    import json
     response.view = 'generic.' + request.extension
-    def GET(botId,message):
+    def POST(**vars):
+        #creates the file for the ai engine
+        botId = vars['bot_id']
+        message = vars['message']
         def log_conversation(chat_id, chat_text, bot, type,content_type,medi,sta):
                 msg_origin = 'client'
                 if (type == 'sent'):
@@ -789,7 +871,9 @@ def sendMessageToBroadcast():
             r_messenger(dict(recipient = dict(id = user.storage_owner),message = dict(text = message)))
             log_conversation(user.storage_owner,message,botId,'sent','text','messenger',False)
         return dict(cont='end broadcast')
+        return dict(result = 'ok')
     return locals()
+#-------------------------
 @cors_allow
 @request.restful()
 def getStatistics():
