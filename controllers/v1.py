@@ -886,6 +886,12 @@ def botClone():
                         db.intent_context_example.insert(intent_id=newIntentId,example_text=example.example_text)
         for c in cnt:
             db((db.bot_context.bot_id==newBotId)&(db.bot_context.parent_context==c['old'])).update(parent_context=c['new'])
+            newjson=db((db.bot_context.bot_id==newBotId)&(db.bot_context.id==c['new'])).select(db.bot_context.context_json).first()
+            import json
+            caddena=str(newjson['context_json'])
+            for s in cnt:
+                caddena=caddena.replace(str(s['old']), str(s['new']))
+            db((db.bot_context.bot_id==newBotId)&(db.bot_context.id==c['new'])).update(context_json=eval(caddena))
         return dict(cont=(r),cn=contexts,inte=intents,act=cnt,newbot=newBotId,status=respss)
     return locals()
 @cors_allow
