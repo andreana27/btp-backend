@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# intente algo como\
+# intente algo como
 @cors_allow
 @request.restful()
 def hook():
@@ -433,7 +433,7 @@ def hook():
                              (db.bot_internal_storage.bot_id == bot.id)&
                              (db.bot_internal_storage.storage_key == 'should_store')).select().first()
                 #conversation gets logged
-                log_conversation(chat_id, chat_text, bot, 'received','attachment')
+                log_conversation(chat_id, chat_text, bot, 'received','text')
                 if send_to:
                     send_to = send_to.storage_value
                     if send_to != '':

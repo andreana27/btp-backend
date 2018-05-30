@@ -690,7 +690,8 @@ def sendMessageToMesseger():
                                        message_time = current_time,
                                        origin = msg_origin,
                                        medium = 'messenger',
-                                       content_type = content_type)
+                                       content_type = content_type,
+                                       need_chat_center=True)
         def r(envelope):
             import requests
             tok=''
@@ -730,7 +731,8 @@ def sendMessageToTelegram():
                                        message_time = current_time,
                                        origin = msg_origin,
                                        medium = 'telegram',
-                                       content_type = content_type)
+                                       content_type = content_type,
+                                       need_chat_center=True)
         def r(method , envelope):
             import requests
             tok=''
