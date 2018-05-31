@@ -1603,6 +1603,7 @@ def hook():
                         myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'Project_'+ str(bot.id)+'.log')
                         f = open(myfile,'w')
                         f.write(context_)
+                        f.write(str(json_string))
                         f.write('\n'+' id:')
                         f.write(str(bot.id)+'\n')
                         if context_:
