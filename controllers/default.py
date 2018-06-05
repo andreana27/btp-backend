@@ -25,7 +25,7 @@ def preCalificador():
             try:
                 num = long(str(params[1]))
                 if num%2 == 0:
-                    return str("Tu crédito ha sido pre-aprobado! Uno de nuestros agentes te contactará en las siguientes horas.")
+                    return str("Tu crédito ha sido pre-aprobado! Uno de nuestros agentes te contactará en las siguientes horas. Ten listo tu DPI y un recibo de algún servicio.")
                 else:
                     return str("Lastimosamente tu crédito no ha sido pre-aprobado.")
             except ValueError:
@@ -83,3 +83,41 @@ def call():
     supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv
     """
     return service()
+
+def csvExport():
+    scriptId = 1
+	#rows = db(query,ignore_common_filters=True).select()
+    rows2 = db(db.bot_storage.bot_id == 11).select(db.bot_storage.storage_owner,distinct=True)
+    rows = db(db.bot_storage.bot_id == 11).select(db.bot_storage.storage_key, db.bot_storage.storage_owner, db.bot_storage.storage_value, limitby=(0,2000))
+    from gluon.contenttype import contenttype
+    response.headers['Content-Type'] = contenttype('.csv')
+    response.headers['Content-disposition'] = 'attachment; filename=export_%s.csv' % (scriptId)
+    import csv, cStringIO
+    s = cStringIO.StringIO()
+    myList2=[]
+    data = db(db.bot_storage.bot_id == 11).select(db.bot_storage.storage_key, distinct=True)
+    myList=[]
+    for value in data:
+        myList.append(value.storage_key)
+    myList2.append(myList)
+    for rowowner in rows2:
+        myList=[]
+        for value in data:
+            dato = db((db.bot_storage.bot_id == 11) & (db.bot_storage.storage_owner == rowowner.storage_owner) & (db.bot_storage.storage_key == value.storage_key)).select(db.bot_storage.storage_value).first()
+            if dato != None:
+                myList.append(dato.storage_value)
+            else:
+                myList.append(" ")
+        myList2.append(myList)
+    import numpy as np
+    myarray = np.array(myList2)
+    rows2.export_to_csv_file(s, delimiter=',', quotechar='"', quoting=csv.QUOTE_NONNUMERIC)
+    import csv
+
+    myFile = open('/opt/web2py_apps/web2py.production/applications/backend/static/example4.csv', 'w')
+    with myFile:
+        writer = csv.writer(myFile)
+        writer.writerows(myList2)
+
+    print("Writing complete")
+    return s.getvalue()
