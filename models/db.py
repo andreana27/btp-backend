@@ -122,7 +122,7 @@ db.define_table('bot_internal_storage',
                 Field('bot_id', 'reference bot'),
                 Field('storage_owner', 'string'),
                 Field('storage_key', 'string'),
-                Field('storage_value', 'string'))
+                Field('storage_value', 'text'))
 
 db.define_table('bot_context_heap',
                 Field('bot_id', 'reference bot'),
