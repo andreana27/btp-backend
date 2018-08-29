@@ -103,6 +103,7 @@ db.define_table('bot',
                 Field('bot_language','string',default='en' ),
                 Field('picture','upload', default = os.path.join(request.folder, 'static', 'images', 'bot_avatar.png')),
                 Field('connectors', 'json'),
+                Field('debug_bot','boolean',default=False),
                 Field('ai_configured','boolean',default=False))
 #bot default image
 #import os
