@@ -339,13 +339,13 @@ def bot_ai():
     response.view = 'generic.' + request.extension
     def POST(**vars):
         #creates the file for the ai engine
-        import os
+        '''import os
         bot_id = vars['bot_id']
         input_stream = vars['file_content']
         myfile = os.path.join('/home/rasa/rasa_nlu/data/examples/rasa/', 'Project_' + str(bot_id) + ".json")
         f = open(myfile,'w')
         f.write(input_stream)
-        f.close()
+        f.close()'''
         return dict(result = 'ok')
     return locals()
 #-------------------------
@@ -357,7 +357,7 @@ def bot_ai_config():
         def excute(cmd,fileName, overwrite = False):
             import subprocess
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE)
-            output = ''
+            output = '>>> %s\n' % (cmd)
             while True:
                 out = p.stderr.read(1)
                 if out == '' and p.poll() != None:
@@ -371,8 +371,26 @@ def bot_ai_config():
                 f = open(myfile,'a')
             f.write(output)
             f.close()
-        #creates the file for the ai engine
+        import json
         import os
+        data = dict()
+        data["rasa_nlu_data"] = dict()
+        data["rasa_nlu_data"]["common_examples"] = []
+        data["rasa_nlu_data"]["regex_features"] = []
+        data["rasa_nlu_data"]["entity_synonyms"] = []
+        intents = db(db.bot_intent.bot_id == vars['bot_id']).select()
+        for intent in intents:
+            examples = db(db.intent_context_example.intent_id == intent.id).select()
+            for example in examples:
+                data["rasa_nlu_data"]["common_examples"].append(dict(text = example.example_text, intent = intent.name, entities=[]))
+        to_save = json.dumps(data)
+        bot_id = vars['bot_id']
+        input_stream = vars['file_content']
+        myfile = os.path.join('/home/rasa/rasa_nlu/data/examples/rasa/', 'Project_' + str(bot_id) + ".json")
+        f = open(myfile,'w')
+        f.write(to_save)
+        f.close()
+        #creates the file for the ai engine
         bot_id = vars['bot_id']
         input_stream = vars['file_content']
         myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/',
@@ -385,11 +403,13 @@ def bot_ai_config():
                'Train_%s.log' % (bot_id),
                overwrite = True)
         #Trains and create newer model
-        excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_%s.json' % (bot_id),
+        excute('python -m rasa_nlu.train -c /home/rasa/rasa_nlu/sample_configs/Project_%s.json -d /home/rasa/rasa_nlu/data/examples/rasa/Project_%s.json --path /home/rasa/rasa_nlu/projects/ --project Project_%s' % (bot_id, bot_id, bot_id),
                'Train_%s.log' % (bot_id))
         #re-starting the ai system
         excute('sudo systemctl restart rasa',
                'Train_%s.log' % (bot_id))
+        import time
+        time.sleep(10) #Wait for rasa to restart
         return dict(result = 'ok')
     return locals()
 #-------------------------
