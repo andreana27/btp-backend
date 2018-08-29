@@ -16,17 +16,6 @@ def hook():
                     return conn
         def messenger(bot, conn):
             #raise Exception(request.vars)
-            myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'messenger.txt')
-            f = open(myfile,'a')
-            f.write('\n')
-            f.write(str(request.vars['hub.verify_token']))
-            f.write('\n')
-            f.write(str(conn['challenge']))
-            f.write('\n')
-            f.write(str(request.vars['hub.mode']))
-            f.write('\n')
-            f.write(str(request.vars['hub.challenge']))
-            f.close();
             if request.vars['hub.verify_token'] == conn['challenge'] and request.vars['hub.mode'] == 'subscribe':
                 return request.vars['hub.challenge']
             return 'Error validating token'
@@ -75,6 +64,10 @@ def hook():
                 uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
                 resu = requests.post(uri, json=envelope)
                 return resu
+            def debug(chat_id, text, bot, **vars):
+                if bot.debug_bot == True:
+                    return r(dict(recipient = dict(id = chat_id),
+                                  message = dict(text = text)))
             def validationText(chat_id, flow_item, bot, **vars):
                 keyboard = []
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
@@ -89,13 +82,16 @@ def hook():
                     if(int(flow_item['retry'])==0):
                         retrys=10000
                 if(retrys<1):
-                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                 (db.bot_internal_storage.bot_id == bot.id)&
-                                                                 (db.bot_internal_storage.storage_key == 'current_context'),
-                                                                storage_owner = chat_id,
-                                                                bot_id = bot.id,
-                                                                storage_key = 'current_context',
-                                                                storage_value = int(str(flow_item['sendTo'])))
+                    try:
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = int(str(flow_item['sendTo'])))
+                    except:
+                        print("Error")
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -111,13 +107,16 @@ def hook():
                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                     return messenger(bot, conn)
                 else:
-                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id)&
-                                                             (db.bot_internal_storage.storage_key == 'retryText'),
-                                                            storage_owner = chat_id,
-                                                            bot_id = bot.id,
-                                                            storage_key = 'retryText',
-                                                            storage_value =str( str(retrys)+"--"+str(flow_item['sendTo'])))
+                    try:
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id)&
+                                                                 (db.bot_internal_storage.storage_key == 'retryText'),
+                                                                storage_owner = chat_id,
+                                                                bot_id = bot.id,
+                                                                storage_key = 'retryText',
+                                                                storage_value =str( str(retrys)+"--"+str(flow_item['sendTo'])))
+                    except:
+                        print("error")
                     return r(dict(recipient = dict(id = chat_id),
                               message = dict(text = flow_item['content'])))
             def validationReply(chat_id, flow_item, bot, **vars):
@@ -341,6 +340,7 @@ def hook():
                         data[key['in']] = value.storage_value
                     else:
                         data[key['in']] = None
+                debug(chat_id,'About to try request %s to %s' % (flow_item['method'], flow_item['url']),bot)
                 if flow_item['method'] == 'POST':
                     res = requests.post(flow_item['url'], data = data)
                     result = xmlescape(res.text)
@@ -350,8 +350,10 @@ def hook():
                 qr = []
                 for q in flow_item['quick_replies']:
                     snd = q['sendTo']
-                    val = q['value']
+                    val = q['title']
+                    debug(chat_id,'Testing %s with %s' % (result, val),bot)
                     if(result==val):
+                        debug(chat_id,'Test passed, seting current context: %s and flow_position: %s' % (snd, 0),bot)
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                          (db.bot_internal_storage.bot_id == bot.id)&
                                                                          (db.bot_internal_storage.storage_key == 'current_context'),
@@ -366,9 +368,11 @@ def hook():
                                                                             bot_id = bot.id,
                                                                             storage_key = 'flow_position',
                                                                             storage_value = 0)
+                debug(chat_id,'About to log conversation',bot)
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
-                return r(dict(recipient = dict(id = chat_id),
-                              message = dict(text = result)))
+                debug(chat_id,'Finishing decisionRest',bot)
+                return #r(dict(recipient = dict(id = chat_id),
+                        #      message = dict(text = result)))
             flow = {'text': text,
                     'quick_reply': quick_reply,
                     'sender_action': sender_action,
@@ -383,6 +387,8 @@ def hook():
                     'decisionRest':decisionRest,
                     'smartReply': smartReply}
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
+            import json
+            json_envelope = json.dumps(request.vars)
             for entry in request.vars['entry']:
                 chat_id = entry['messaging'][0]['sender']['id']
                 content_type = 'text'
@@ -391,6 +397,12 @@ def hook():
                 else:
                     chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
                     content_type = 'attachment'
+                debug(chat_id,
+                      'Received message: "%s", bot id "%s", chat_id "%s", envelope "%s"' % (chat_text,
+                                                                                            bot.id,
+                                                                                            chat_id,
+                                                                                            json_envelope),
+                      bot)
                 resp=db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id))
                 needchat=False
                 try:
@@ -415,6 +427,7 @@ def hook():
                                        content_type = content_type,
                                        need_chat_center=True)
                     log_conversationtrue(chat_id, chat_text, bot, 'received','text')
+                    debug(chat_id, 'Logged message: "%s"' % (chat_text), bot)
                     return 0
                 #try:
                     #chat_text = entry['messaging'][0]['message']['text']
@@ -436,23 +449,19 @@ def hook():
                 log_conversation(chat_id, chat_text, bot, 'received','text')
                 if send_to:
                     send_to = send_to.storage_value
+                    debug(chat_id, 'identified "send_to": "%s"' % (send_to), bot)
                     if send_to != '':
                         #Evaluate chat_text with send_to
                         for matches in send_to.split(","):
                             match, action = matches.split(":")
                             import unicodedata
-                            def fix(cadena):
-                                cadena2=''
-                                for c in cadena:
-                                    try:
-                                        cadena2+=c.decode().encode('utf-8')
-                                    except:
-                                        cadena2+=''
-                                return cadena2
+                            debug(chat_id, 'testing "chat_text": "%s" with send_to match "%s"' % (fix(chat_text).strip(),
+                                                                                                  fix(match).strip()), bot)
                             if str(fix(chat_text)).strip() == str(fix(match)).strip():
                                 flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                                debug(chat_id, 'send_to matched, flow_positon is: "%s"' % (flow_position_.storage_value), bot)
                                 if(int(flow_position_.storage_value)!=0):
                                     current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                        (db.bot_internal_storage.bot_id == bot.id)&
@@ -464,12 +473,15 @@ def hook():
                                         default_context = db((db.bot_context.bot_id == bot.id)
                                                              &(db.bot_context.name == 'default')).select().first()
                                         current_context_id = default_context.id
-
+                                    debug(chat_id,
+                                          'send_to matched, current_context_id is, inserting into heap: "%s"' % (current_context_id),
+                                          bot)
                                     db.bot_context_heap.insert(storage_owner = chat_id,
                                                                bot_id = bot.id,
                                                                context_id = current_context_id,
                                                                context_position = flow_position_.storage_value)
                                 #send_to that context and clear the direction
+                                debug(chat_id, 'saving current_context key with value: "%s"' % (action), bot)
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'current_context'),
@@ -477,6 +489,7 @@ def hook():
                                                                     bot_id = bot.id,
                                                                     storage_key = 'current_context',
                                                                     storage_value = int(action))
+                                debug(chat_id, 'saving flow_position key with value: "%s"' % (0), bot)
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                          (db.bot_internal_storage.bot_id == bot.id)&
                                                                          (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -484,10 +497,20 @@ def hook():
                                                                         bot_id = bot.id,
                                                                         storage_key = 'flow_position',
                                                                         storage_value = 0)
+                                debug(chat_id, 'deleting send_to key', bot)
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                debug(chat_id, 'recursive call %s' % (action), bot)
+                                debug(chat_id, '-deleting should_value_ai key', bot)
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
                                 return messenger(bot, conn)
+                debug(chat_id, 'deleting send_to key', bot)
+                db((db.bot_internal_storage.storage_owner == chat_id)&
+                   (db.bot_internal_storage.bot_id == bot.id)&
+                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                 if should_store:
                     should_store_key = should_store.storage_value
                     db.bot_storage.update_or_insert((db.bot_storage.bot_id == bot.id)&
@@ -518,18 +541,23 @@ def hook():
                     flow_position = int(flow_position.storage_value)
                 else:
                     flow_position = 0
-#<<<<<<< HEAD
+                should_value_ai = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'should_value_ai')).select().first()
+                import json
+                try:
+                    should_value_ai = json.loads(should_value_ai.storage_value)
+                except:
+                    should_value_ai = None
                 try:
                     flow_item = context.context_json[context.name][flow_position]
                 except:
                     flow_item = None
-#=======
-#                flow_item = context.context_json[context.name][flow_position]
-                #
-#>>>>>>> 7526fa3b565b46d5eceff5ceedc644ec0ae392ec
-                #SMART OBJECTS
-                if flow_position > 0:
-                    flow_item_eval = context.context_json[context.name][flow_position - 1]
+                debug(chat_id, 'flow position, context: "%s", "%s"' % (flow_position, context.name), bot)
+                #r(dict(recipient = dict(id = chat_id),
+                #                          message = dict(text = 'flow position: "%s"' %(flow_position))))
+                if should_value_ai:
+                    flow_item_eval = should_value_ai
                     if flow_item_eval['type'] == 'checkPoint':
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -736,6 +764,22 @@ def hook():
                             else:
                                 validacion=0
                         #fdebug.close()
+                        if flow_item_eval['type'] == 'smartReply':
+                            #check for smartReply with option without send_to
+                            for reply in flow_item_eval['quick_replies']:
+                                valuation = str(fix(chat_text)).strip() == str(fix(reply['title'])).strip()
+                                debug(chat_id,
+                                      'testing avoid IA calls string1: "%s", string2: "%s"' % (str(fix(chat_text)).strip(),
+                                                                                               str(fix(reply['title'])).strip()),
+                                      bot)
+                                #r(dict(recipient = dict(id = chat_id),
+                                #          message = dict(text = 'string1: "%s", string2: "%s", evaluacion: "%s"' %(
+                                #                         str(fix(chat_text)).strip(),
+                                #                         str(fix(reply['title'])).strip(),
+                                #                         valuation))))
+                                if valuation:
+                                    validacion = 1
+                        debug(chat_id, 'evaluating smart_text/smart_reply, omitir_IA: "%s"' % (validacion), bot)
                         if(validacion<1):
                             #Smart response validation request
                             import requests
@@ -744,8 +788,10 @@ def hook():
                             #context = response['intent']
                             #import json
                             json_string = response.json()
+                            debug(chat_id, 'evaluating AI: "%s"' % (response.text), bot)
                             #getting the conext name
                             context_= None
+                            import traceback
                             try:
                                 context_ = json_string['intent']['name']
                                 import datetime
@@ -763,6 +809,7 @@ def hook():
                                 import datetime
                                 current_date = datetime.datetime.now()
                                 current_time = datetime.datetime.now().time()
+                                debug(chat_id, 'error calling AI: "%s"' % (traceback.format_exc()), bot)
                                 db.ai_request.insert(bot_id = bot.id,
                                                      storage_owner = chat_id,
                                                      request_time = current_time,
@@ -771,15 +818,15 @@ def hook():
                                                      status = 'error',
                                                      ccontent = chat_text,
                                                      ai_response = '')
-                                return messenger(bot, conn)
-                            myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'ia.txt')
-                            f = open(myfile,'w')
-                            f.write(str(json_string))
-                            f.close()
+                            #myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'ia.txt')
+                            #f = open(myfile,'w')
+                            #f.write(str(json_string))
+                            #f.close()
                             if context_:
                                 context_id = db((db.bot_context.bot_id == bot.id)
                                             &(db.bot_intent.name == context_)
                                             &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
+                                debug(chat_id, 'AI sending to context: "%s", "%s"' % (context_, context_id), bot)
                                 if context_id:
                                     flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
@@ -815,7 +862,31 @@ def hook():
                                                                             bot_id = bot.id,
                                                                             storage_key = 'flow_position',
                                                                             storage_value = 0)
+                                    debug(chat_id, '-deleting should_value_ai key', bot)
+                                    db((db.bot_internal_storage.storage_owner == chat_id)&
+                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                       (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
                                     return messenger(bot, conn)
+                if flow_item['type'] in ('checkPoint',
+                                         'chatCenter',
+                                         'validationText',
+                                         'validationReply',
+                                         'smartText',
+                                         'smartReply'):
+                    debug(chat_id, '+adding should_value_ai key for next run', bot)
+                    import json
+                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id)&
+                                                             (db.bot_internal_storage.storage_key == 'should_value_ai'),
+                                                            storage_owner = chat_id,
+                                                            bot_id = bot.id,
+                                                            storage_key = 'should_value_ai',
+                                                            storage_value = json.dumps(flow_item))
+                else:
+                    debug(chat_id, '-deleting should_value_ai key', bot)
+                    db((db.bot_internal_storage.storage_owner == chat_id)&
+                       (db.bot_internal_storage.bot_id == bot.id)&
+                       (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
                 #END SMART OBJECTS
                 #save the answer of the cliente in the bot_storage table
                 #checking if the flow item has the "store" property
@@ -893,6 +964,10 @@ def hook():
                            (db.bot_phantom_context.bot_id == bot.id)).update(flow_position=(int(str(flow_position_phantom.flow_position))+1))
                         #r(dict(recipient = dict(id = chat_id),message = dict(text = str(len(flow_position_phantom.context_json[flow_position_phantom.name])))))
                 #THIS CALL CAN CHANGE THE CONTEXT AND POSITION COMPLETELY
+                debug(chat_id, 'ended pre-evaluations, calling item: "%s"' % (flow_item['type']), bot)
+                #r(dict(recipient = dict(id = chat_id),
+                #                          message = dict(text = 'calling next item %s' %(
+                #                                         flow_item['type']))))
                 flow[flow_item['type']](chat_id, flow_item,
                                         bot = bot,
                                         flow_position = flow_position,
@@ -903,6 +978,8 @@ def hook():
                 if flow_item['type'] == 'end':
                     return messenger(bot, conn)
                 if flow_item['type'] == 'attachment':
+                    return messenger(bot, conn)
+                if flow_item['type'] == 'decisionRest':
                     return messenger(bot, conn)
                 #for flow_item in context.context_json[context.name]:
                 #    flow[flow_item['type']](chat_id, flow_item)
