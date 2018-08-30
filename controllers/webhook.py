@@ -397,6 +397,9 @@ def hook():
                 else:
                     chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
                     content_type = 'attachment'
+                if chat_text:
+                    if type(chat_text) != unicode:
+                        chat_text = unicode(chat_text,'utf-8')
                 debug(chat_id,
                       'Received message: "%s", bot id "%s", chat_id "%s", envelope "%s"' % (chat_text,
                                                                                             bot.id,
@@ -454,10 +457,12 @@ def hook():
                         #Evaluate chat_text with send_to
                         for matches in send_to.split(","):
                             match, action = matches.split(":")
+                            if type(match) != unicode:
+                                match = unicode(match, 'utf-8')
                             import unicodedata
-                            debug(chat_id, 'testing "chat_text": "%s" with send_to match "%s"' % (fix(chat_text).strip(),
-                                                                                                  fix(match).strip()), bot)
-                            if str(fix(chat_text)).strip() == str(fix(match)).strip():
+                            debug(chat_id, 'testing "chat_text": "%s" with send_to match "%s"' % (chat_text.strip(),
+                                                                                                  match.strip()), bot)
+                            if chat_text.strip() == match.strip():
                                 flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
@@ -767,16 +772,11 @@ def hook():
                         if flow_item_eval['type'] == 'smartReply':
                             #check for smartReply with option without send_to
                             for reply in flow_item_eval['quick_replies']:
-                                valuation = str(fix(chat_text)).strip() == str(fix(reply['title'])).strip()
+                                valuation = chat_text.strip() == reply['title'].strip()
                                 debug(chat_id,
-                                      'testing avoid IA calls string1: "%s", string2: "%s"' % (str(fix(chat_text)).strip(),
-                                                                                               str(fix(reply['title'])).strip()),
+                                      'testing avoid IA calls string1: "%s", string2: "%s"' % (chat_text.strip(),
+                                                                                               reply['title'].strip()),
                                       bot)
-                                #r(dict(recipient = dict(id = chat_id),
-                                #          message = dict(text = 'string1: "%s", string2: "%s", evaluacion: "%s"' %(
-                                #                         str(fix(chat_text)).strip(),
-                                #                         str(fix(reply['title'])).strip(),
-                                #                         valuation))))
                                 if valuation:
                                     validacion = 1
                         debug(chat_id, 'evaluating smart_text/smart_reply, omitir_IA: "%s"' % (validacion), bot)
@@ -818,10 +818,6 @@ def hook():
                                                      status = 'error',
                                                      ccontent = chat_text,
                                                      ai_response = '')
-                            #myfile = os.path.join('/home/rasa/rasa_nlu/sample_configs/', 'ia.txt')
-                            #f = open(myfile,'w')
-                            #f.write(str(json_string))
-                            #f.close()
                             if context_:
                                 context_id = db((db.bot_context.bot_id == bot.id)
                                             &(db.bot_intent.name == context_)
@@ -962,7 +958,6 @@ def hook():
                             val=1
                         db((db.bot_phantom_context.storage_owner == chat_id)&
                            (db.bot_phantom_context.bot_id == bot.id)).update(flow_position=(int(str(flow_position_phantom.flow_position))+1))
-                        #r(dict(recipient = dict(id = chat_id),message = dict(text = str(len(flow_position_phantom.context_json[flow_position_phantom.name])))))
                 #THIS CALL CAN CHANGE THE CONTEXT AND POSITION COMPLETELY
                 debug(chat_id, 'ended pre-evaluations, calling item: "%s"' % (flow_item['type']), bot)
                 #r(dict(recipient = dict(id = chat_id),
@@ -1349,16 +1344,7 @@ def hook():
                     for matches in send_to.split(","):
                         match, action = matches.split(":")
                         import unicodedata
-                        def fix(cadena):
-                            cadena2=''
-                            for c in cadena:
-                                try:
-                                    cadena2+=c.decode().encode('utf-8')
-                                except:
-                                    cadena2+=''
-                            return cadena2
-                        #r('sendMessage', dict(chat_id = chat_id,text = fix(chat_text)+'____'+fix(match)))
-                        if str(fix(chat_text)).strip() == str(fix(match)).strip():
+                        if chat_text.strip() == match.strip():
                             #send_to that context and clear the direction
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
@@ -2103,15 +2089,7 @@ def hook():
                     for matches in send_to.split(","):
                         match, action = matches.split(":")
                         import unicodedata
-                        def fix(cadena):
-                            cadena2=''
-                            for c in cadena:
-                                try:
-                                    cadena2+=c.decode().encode('utf-8')
-                                except:
-                                    cadena2+=''
-                            return cadena2
-                        if str(fix(chat_text)).strip() == str(fix(match)).strip():
+                        if chat_text.strip() == match.strip():
                             #send_to that context and clear the direction
 
                             flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
