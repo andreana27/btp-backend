@@ -870,7 +870,7 @@ def sendMessageToBroadcast():
                     tok=conn['token']
             uri = 'https://api.telegram.org/bot{key}/{method}'.format(key = tok,method = method)
             resu = requests.post(uri, json=envelope)
-            return resu
+            return resu.text if resu != None else ''
         def r_messenger(envelope):
             import requests
             tok=''
@@ -880,20 +880,21 @@ def sendMessageToBroadcast():
                     tok=conn['token']
             uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token =tok)
             resu = requests.post(uri, json=envelope)
-            return resu
+            return resu.text if resu != None else ''
         #respuesta=r_messenger(dict(recipient = dict(id = clientId),message = dict(text = message)))
         #respuesta=r('sendMessage', dict(chat_id = 'Broadcast',text = message))
         users = db((db.conversation.bot_id==botId)&(db.conversation.medium=='telegram')).select(db.conversation.storage_owner,distinct=True)
         log_conversation('Broadcast', message, botId, 'sent','text','broadcast',True)
         for user in users:
-            r_telegram('sendMessage', dict(chat_id = user.storage_owner,text = message))
+            answer = r_telegram('sendMessage', dict(chat_id = user.storage_owner,text = message))
             log_conversation(user.storage_owner,message,botId,'sent','text','telegram',False)
+            log_conversation(user.storage_owner,'broadcast status: %s' % (answer),botId,'sent','text','telegram',False)
         users_ms = db((db.conversation.bot_id==botId)&(db.conversation.medium=='messenger')).select(db.conversation.storage_owner,distinct=True)
         for user in users_ms:
-            r_messenger(dict(recipient = dict(id = user.storage_owner),message = dict(text = message)))
+            answer = r_messenger(dict(recipient = dict(id = user.storage_owner),message = dict(text = message)))
             log_conversation(user.storage_owner,message,botId,'sent','text','messenger',False)
-        return dict(cont='end broadcast')
-        return dict(result = 'ok')
+            log_conversation(user.storage_owner,'broadcast status: %s' % (answer),botId,'sent','text','messenger',False)
+        return dict(cont='end broadcast, %s messenger, %s telegram' % (len(users_ms), len(users)))
     return locals()
 #-------------------------
 @cors_allow
