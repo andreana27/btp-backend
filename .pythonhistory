@@ -8,3 +8,5 @@ json.dumps
 db((db.bot_storage.bot_id==10)).select(db.bot_storage.storage_owner, distinct = True)
 148/166.0
 153/166.0
+db(db.bot_internal_storage.id>0).delete()
+db.commit()

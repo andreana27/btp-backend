@@ -37,6 +37,29 @@ def hook():
     response.headers['Access-Control-Allow-Headers'] = '*'
     response.headers['Access-Control-Allow-Methods'] = '*'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
+    munisPorDepto = [ 17 #/* 01 - Guatemala tiene: */ 17 /* municipios. */,
+        , 8 #/* 02 - El Progreso tiene: */ 8 /* municipios. */,
+        , 16 #/* 03 - Sacatepéquez tiene: */ 16 /* municipios. */,
+        , 16 #/* 04 - Chimaltenango tiene: */ 16 /* municipios. */,
+        , 13 #/* 05 - Escuintla tiene: */ 13 /* municipios. */,
+        , 14 #/* 06 - Santa Rosa tiene: */ 14 /* municipios. */,
+        , 19 #/* 07 - Sololá tiene: */ 19 /* municipios. */,
+        , 8 #/* 08 - Totonicapán tiene: */ 8 /* municipios. */,
+        , 24 #/* 09 - Quetzaltenango tiene: */ 24 /* municipios. */,
+        , 21 #/* 10 - Suchitepéquez tiene: */ 21 /* municipios. */,
+        , 9 #/* 11 - Retalhuleu tiene: */ 9 /* municipios. */,
+        , 30 #/* 12 - San Marcos tiene: */ 30 /* municipios. */,
+        , 32 #/* 13 - Huehuetenango tiene: */ 32 /* municipios. */,
+        , 21 #/* 14 - Quiché tiene: */ 21 /* municipios. */,
+        , 8 #/* 15 - Baja Verapaz tiene: */ 8 /* municipios. */,
+        , 17 #/* 16 - Alta Verapaz tiene: */ 17 /* municipios. */,
+        , 14 #/* 17 - Petén tiene: */ 14 /* municipios. */,
+        , 5 #/* 18 - Izabal tiene: */ 5 /* municipios. */,
+        , 11 #/* 19 - Zacapa tiene: */ 11 /* municipios. */,
+        , 11 #/* 20 - Chiquimula tiene: */ 11 /* municipios. */,
+        , 7 #/* 21 - Jalapa tiene: */ 7 /* municipios. */,
+        , 17] #/* 22 - Jutiapa tiene: */ 17 /* municipios. *
+
     def POST(connector, botid, **vars):
         def connfind(bot, connector):
             for conn in bot.connectors:
@@ -606,7 +629,7 @@ def hook():
                         if(validacion==3):#verificamos si la entrada es un email
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                            if re.search('^[_a-zA-Z0-9-]+(\.[_a-zA-Z0-9-]+)*@[a-zA-Z0-9-_]+(\.[a-zA-Z0-9-]+)*(\.[a-zA-Z]{2,4})$',chat_text.lower()):
                                 #fdebug.write('email correcto \n')
                                 validacion=3
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -620,7 +643,7 @@ def hook():
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                            if re.search("^((0[1-9])|((1|2)[0-9])|(30|31))/((0[1-9])|10|11|12)/((1|2)[0-9][0-9][0-9])$",chat_text.lower()):
                                 #fdebug.write('fecha correcta \n')
                                 validacion=4
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -631,7 +654,132 @@ def hook():
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
-                        #fdebug.close()
+                        if(validacion==5):#verificamos si la entrada es un NIT valido
+                            import re
+                            if re.search('^(\d)+(-)(\d|k|K)$',chat_text.lower()):
+                                try:
+                                    #debug(chat_id, 'NIT', bot)
+                                    val_nit = chat_text.replace("-", "")
+                                    size_nit = len(val_nit)
+                                    sum_nit = 0
+                                    num_verificador = ""
+                                    #debug(chat_id, 'for', bot)
+                                    #debug(chat_id, 'size_nit ' + str(size_nit), bot)
+                                    for num in val_nit:
+                                        if size_nit > 1 :
+                                            sum_nit += int(num) * size_nit
+                                            size_nit = size_nit - 1
+                                        else:
+                                            num_verificador = num
+                                    debug(chat_id, 'num_verificador ' + num_verificador, bot)
+                                    debug(chat_id, 'sum_nit ' + str(sum_nit), bot)
+                                    cociente = sum_nit//11
+                                    total = sum_nit - (cociente*11)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    while cociente != 0 and total != 0:
+                                        cociente = total//11
+                                        total = total - (cociente*11)
+                                    debug(chat_id, 'total' + str(total), bot)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    if num_verificador == "k" or num_verificador == "K":
+                                        val = 11 - total
+                                        if val == 10:
+                                            #NIT valido
+                                            validacion=5
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                    else:
+                                        val = 11 - total
+                                        debug(chat_id, 'val' + str(val), bot)
+                                        if val == int(num_verificador):
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        elif val == 11 and int(num_verificador) == 0:
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                        debug(chat_id, 'validacion ' + str(validacion), bot)
+                                except ValueError:
+                                    validacion=0
+                            else:
+                                validacion=0
+
+                        if(validacion==6):#verificamos si la entrada es un DPI valido
+                            import re
+                            if re.search('^(\d){13}$',chat_text.lower()):
+                                try:
+                                    DPI = chat_text
+                                    count_numero = 2
+                                    total_numero = 0
+                                    num_verificador = 0
+                                    str_municipio = ""
+                                    str_departamento = ""
+                                    for num in DPI:
+                                        if count_numero <= 9:
+                                            total_numero += int(num) * count_numero
+                                        elif count_numero == 10:
+                                            num_verificador = int(num)
+                                        elif count_numero == 11 or count_numero == 12:
+                                            str_departamento = str_departamento + num
+                                        elif count_numero == 13 or count_numero == 14:
+                                            str_municipio = str_municipio + num
+                                        count_numero = count_numero + 1
+                                    debug(chat_id, 'total_numero ' + str(total_numero), bot)
+                                    debug(chat_id, 'str_departamento ' + str(str_departamento), bot)
+                                    debug(chat_id, 'str_municipio ' + str(str_municipio), bot)
+                                    #banderas de validacion
+                                    flag_departamento = False
+                                    flag_municipio = False
+                                    flag_codigo = False
+                                    #validar que sea un departamento valido
+                                    departamento = int(str_departamento)
+                                    if departamento >= 1 and departamento <= 22:
+                                        flag_departamento = True
+                                    #validar que sea un municipio valido
+                                    municipio = int(str_municipio)
+                                    if munisPorDepto[departamento - 1] >= municipio:
+                                        flag_municipio = True
+                                    #validar que el codigo sea valido
+                                    validar = total_numero%11
+                                    if validar == num_verificador :
+                                        flag_codigo = True
+                                    if flag_departamento == True and flag_municipio == True and flag_codigo == True:
+                                        validacion=6
+                                        debug(chat_id, 'validacion 6 ', bot)
+                                        #NIT valido
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                    else:
+                                        validacion=0
+                                        debug(chat_id, 'validacion 0 ', bot)
+                                except ValueError:
+                                    validacion=0
+                                    debug(chat_id, 'validacion 0 error ', bot)
+                            else:
+                                validacion=0
                         if(validacion<1):
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
@@ -685,7 +833,7 @@ def hook():
                         if(validacion==3):#verificamos si la entrada es un email
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                            if re.search('^[_a-zA-Z0-9-]+(\.[_a-zA-Z0-9-]+)*@[a-zA-Z0-9-_]+(\.[a-zA-Z0-9-]+)*(\.[a-zA-Z]{2,4})$',chat_text.lower()):
                                 #fdebug.write('email correcto \n')
                                 validacion=3
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -699,7 +847,7 @@ def hook():
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                            if re.search("^((0[1-9])|((1|2)[0-9])|(30|31))/((0[1-9])|10|11|12)/((1|2)[0-9][0-9][0-9])$",chat_text.lower()):
                                 #fdebug.write('fecha correcta \n')
                                 validacion=4
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
