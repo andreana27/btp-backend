@@ -1,3 +1,4 @@
+#*************
 # -*- coding: utf-8 -*-
 # intente algo como
 @cors_allow
@@ -99,13 +100,16 @@ def hook():
                     selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
+                    repet=int(flow_item['retry'])
                     retrys=int(selretrys[0]['storage_value'].split("--")[0])-1
                 except:
                     retrys=int(flow_item['retry'])
                     if(int(flow_item['retry'])==0):
                         retrys=10000
+                debug(chat_id,'repeticiones VT %s maxRepet %s'%(retrys,repet),bot)
                 if(retrys<1):
                     try:
+                        debug(chat_id,'context IFVT  %s '%(int(str(flow_item['sendTo']))),bot)
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'current_context'),
@@ -114,14 +118,14 @@ def hook():
                                                                     storage_key = 'current_context',
                                                                     storage_value = int(str(flow_item['sendTo'])))
                     except:
-                        print("Error")
+                        debug(chat_id,'Exception validationText',bot)
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
                                                                     storage_key = 'flow_position',
-                                                                    storage_value = 0)
+                                                                    storage_value=0)
                     db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -132,28 +136,37 @@ def hook():
                 else:
                     try:
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                 (db.bot_internal_storage.bot_id == bot.id)&
-                                                                 (db.bot_internal_storage.storage_key == 'retryText'),
-                                                                storage_owner = chat_id,
-                                                                bot_id = bot.id,
-                                                                storage_key = 'retryText',
-                                                                storage_value =str( str(retrys)+"--"+str(flow_item['sendTo'])))
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'retryText'),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    storage_key = 'retryText',
+                                                                    storage_value =str( str(retrys)+"--"+str(flow_item['sendTo'])))
                     except:
                         print("error")
-                    return r(dict(recipient = dict(id = chat_id),
-                              message = dict(text = flow_item['content'])))
+                    #-----------------------------------------------------------------------------------------------
+                    if retrys==repet or flow_item.get('onError') == None:
+                        return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['content'])))
+                    else:
+                        if len(flow_item['onError'])!=0:
+                            return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['onError'])))
+                        else:
+                            return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['content'])))
             def validationReply(chat_id, flow_item, bot, **vars):
                 retrys=0
                 try:
                     selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'retryReply')).select(db.bot_internal_storage.storage_value)
+                    repet=int(flow_item['retry'])
                     retrys=int(selretrys[0]['storage_value'].split("--")[0])-1
                 except:
                     retrys=int(flow_item['retry'])
                     if(int(flow_item['retry'])==0):
                         retrys=10000
+                debug(chat_id,'repeticiones VR %s maxRepet %s'%(retrys,repet),bot)
                 if(retrys<1):
+                    debug(chat_id,'if VR',bot)
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
@@ -176,6 +189,7 @@ def hook():
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                     return messenger(bot, conn)
                 else:
+                    debug(chat_id,'else VR',bot)
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'retryReply'),
@@ -200,9 +214,14 @@ def hook():
                                                              bot_id = bot.id,
                                                              storage_key = 'send_to',
                                                              storage_value = ','.join(send_to))
-                    return r(dict(recipient = dict(id = chat_id),
-                                  message = dict(text = flow_item['content'],
-                                                 quick_replies = qr)))
+                    #-------------------------------------------------------------------------------------------
+                    if retrys==repet:
+                        return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['content'],quick_replies = qr)))
+                    else:
+                        if len(flow_item['onError'])!=0:
+                            return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['onError'],quick_replies = qr)))
+                        else:
+                            return r(dict(recipient = dict(id = chat_id),message = dict(text = flow_item['content'],quick_replies = qr)))
             def chatCenter(chat_id, flow_item, bot, **vars):
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 qr = []
@@ -294,15 +313,18 @@ def hook():
                               sender_action = flow_item['sender_action']))
             def end(chat_id, flow_item, bot, flow_position, current_context, context, **vars):
                 log_conversation(chat_id, '<%s>'%(flow_item['action']), bot.id, 'sent','text')
+                debug(chat_id,'Inicia-End %s'%(flow_item['action']),bot)
                 if flow_item['action'] == 'return':
                     #find the parent context and set to it
                     next_position_ = 0
                     heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
                                (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
                     if(heap_ is not None):
+                        debug(chat_id,'heap_ es None pos=0',bot)
                         next_position_ = 0
                     else:
                         if context.parent_context is not None:
+                            debug(chat_id,'Parent Context es None, context %s pos 0'%(context.parent_context.id),bot)
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
@@ -413,6 +435,7 @@ def hook():
             import json
             json_envelope = json.dumps(request.vars)
             for entry in request.vars['entry']:
+                import json
                 chat_id = entry['messaging'][0]['sender']['id']
                 content_type = 'text'
                 if ('text' in entry['messaging'][0]['message']):
@@ -420,6 +443,8 @@ def hook():
                 else:
                     chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
                     content_type = 'attachment'
+                debug(chat_id,
+                      'Facebook Message: "%s"' % (json.dumps(entry)), bot)
                 if chat_text:
                     if type(chat_text) != unicode:
                         chat_text = unicode(chat_text,'utf-8')
@@ -486,6 +511,7 @@ def hook():
                             debug(chat_id, 'testing "chat_text": "%s" with send_to match "%s"' % (chat_text.strip(),
                                                                                                   match.strip()), bot)
                             if chat_text.strip() == match.strip():
+                                debug(chat_id,'iguales',bot)
                                 flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
@@ -517,6 +543,17 @@ def hook():
                                                                     bot_id = bot.id,
                                                                     storage_key = 'current_context',
                                                                     storage_value = int(action))
+                                #----------------------------------------------------------------------------------
+                                positionError=flow_position_.storage_value
+                                try:
+                                    posError = db((db.bot_internal_error.storage_owner == chat_id)&
+                                                                               (db.bot_internal_error.bot_id == bot.id)).select().first()
+                                except:
+                                    debug(chat_id,'error exception',bot)
+                                if (posError !=None):
+                                    positionError=posError.position_flow
+                                    db((db.bot_internal_error.storage_owner == chat_id)&(db.bot_internal_error.bot_id == bot.id)).delete()
+                                #-------------------------------------------------------------------
                                 debug(chat_id, 'saving flow_position key with value: "%s"' % (0), bot)
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                          (db.bot_internal_storage.bot_id == bot.id)&
@@ -524,7 +561,7 @@ def hook():
                                                                         storage_owner = chat_id,
                                                                         bot_id = bot.id,
                                                                         storage_key = 'flow_position',
-                                                                        storage_value = 0)
+                                                                        storage_value =positionError)
                                 debug(chat_id, 'deleting send_to key', bot)
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
@@ -536,6 +573,7 @@ def hook():
                                    (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
                                 return messenger(bot, conn)
                 debug(chat_id, 'deleting send_to key', bot)
+                #db((db.bot_internal_error.storage_owner == chat_id)&(db.bot_internal_error.bot_id == bot.id)).delete()
                 db((db.bot_internal_storage.storage_owner == chat_id)&
                    (db.bot_internal_storage.bot_id == bot.id)&
                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -565,8 +603,10 @@ def hook():
                 flow_position = db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                debug(chat_id, 'flow position p1 "%s"' % (flow_position), bot)
                 if flow_position:
                     flow_position = int(flow_position.storage_value)
+                    debug(chat_id, 'flow position IF "%s"' % (flow_position), bot)
                 else:
                     flow_position = 0
                 should_value_ai = db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -579,11 +619,13 @@ def hook():
                     should_value_ai = None
                 try:
                     flow_item = context.context_json[context.name][flow_position]
+                    debug(chat_id, 'flow position try "%s"' % (flow_position), bot)
                 except:
                     flow_item = None
                 debug(chat_id, 'flow position, context: "%s", "%s"' % (flow_position, context.name), bot)
                 #r(dict(recipient = dict(id = chat_id),
                 #                          message = dict(text = 'flow position: "%s"' %(flow_position))))
+                debug(chat_id, 'Before Testing AI (%s)' % (json.dumps(should_value_ai)), bot)
                 if should_value_ai:
                     flow_item_eval = should_value_ai
                     if flow_item_eval['type'] == 'checkPoint':
@@ -602,6 +644,7 @@ def hook():
                             return 0
                         #aca quedaria la respuesta para desactivar el bot
                     if flow_item_eval['type'] == 'validationText':
+                        debug(chat_id, 'Starting ValidationText', bot)
                         validacion=0
                         if ('validation' in flow_item_eval):
                             validacion+=int(flow_item_eval['validation'])
@@ -655,6 +698,7 @@ def hook():
                             else:
                                 validacion=0
                         if(validacion==5):#verificamos si la entrada es un NIT valido
+                            debug(chat_id, 'Testing NIT validation', bot)
                             import re
                             if re.search('^(\d)+(-)(\d|k|K)$',chat_text.lower()):
                                 try:
@@ -722,8 +766,8 @@ def hook():
                                     validacion=0
                             else:
                                 validacion=0
-
                         if(validacion==6):#verificamos si la entrada es un DPI valido
+                            debug(chat_id, 'Testing DPI validation', bot)
                             import re
                             if re.search('^(\d){13}$',chat_text.lower()):
                                 try:
@@ -781,6 +825,7 @@ def hook():
                             else:
                                 validacion=0
                         if(validacion<1):
+                            debug(chat_id, 'Validation is %s' % (validacion), bot)
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
@@ -789,6 +834,7 @@ def hook():
                                 retrys=int(selretrys[0]['storage_value'].split("--")[0])
                             except:
                                 retrys=0
+                            debug(chat_id, 'Retries: %s' % (retrys), bot)
                             if(retrys>0):
                                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
@@ -799,12 +845,16 @@ def hook():
                                                             storage_value = flow_position)
                                 flow_position=flow_position-1
                                 flow_item = context.context_json[context.name][flow_position]
-                                #return messenger(bot, conn)
-                            else:
-                                #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                                vals=2
-                                return 0
-                                #return messenger(bot, conn)
+                                if retrys==1:
+                                    flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                                       (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                                    db.bot_internal_error.update_or_insert((db.bot_internal_error.storage_owner == chat_id)&
+                                                                     (db.bot_internal_error.bot_id == bot.id),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    position_flow =int(flow_position_.storage_value)-1)
+                                    #debug(chat_id,'If ultima validacion pos=%s'%(flow_position_.storage_value),bot)
                     if flow_item_eval['type'] == 'validationReply':
                         validacion=0
                         if ('validation' in flow_item_eval):
@@ -824,7 +874,7 @@ def hook():
                                 validacion=2
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
-                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -838,7 +888,7 @@ def hook():
                                 validacion=3
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
-                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -852,10 +902,137 @@ def hook():
                                 validacion=4
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
-                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                            else:
+                                validacion=0
+                        if(validacion==5):#verificamos si la entrada es un NIT valido
+                            debug(chat_id, 'Testing NIT validation', bot)
+                            import re
+                            if re.search('^(\d)+(-)(\d|k|K)$',chat_text.lower()):
+                                try:
+                                    #debug(chat_id, 'NIT', bot)
+                                    val_nit = chat_text.replace("-", "")
+                                    size_nit = len(val_nit)
+                                    sum_nit = 0
+                                    num_verificador = ""
+                                    #debug(chat_id, 'for', bot)
+                                    #debug(chat_id, 'size_nit ' + str(size_nit), bot)
+                                    for num in val_nit:
+                                        if size_nit > 1 :
+                                            sum_nit += int(num) * size_nit
+                                            size_nit = size_nit - 1
+                                        else:
+                                            num_verificador = num
+                                    debug(chat_id, 'num_verificador ' + num_verificador, bot)
+                                    debug(chat_id, 'sum_nit ' + str(sum_nit), bot)
+                                    cociente = sum_nit//11
+                                    total = sum_nit - (cociente*11)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    while cociente != 0 and total != 0:
+                                        cociente = total//11
+                                        total = total - (cociente*11)
+                                    debug(chat_id, 'total' + str(total), bot)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    if num_verificador == "k" or num_verificador == "K":
+                                        val = 11 - total
+                                        if val == 10:
+                                            #NIT valido
+                                            validacion=5
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                    else:
+                                        val = 11 - total
+                                        debug(chat_id, 'val' + str(val), bot)
+                                        if val == int(num_verificador):
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        elif val == 11 and int(num_verificador) == 0:
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                        debug(chat_id, 'validacion ' + str(validacion), bot)
+                                except ValueError:
+                                    validacion=0
+                            else:
+                                validacion=0
+                        if(validacion==6):#verificamos si la entrada es un DPI valido
+                            debug(chat_id, 'Testing DPI validation', bot)
+                            import re
+                            if re.search('^(\d){13}$',chat_text.lower()):
+                                try:
+                                    DPI = chat_text
+                                    count_numero = 2
+                                    total_numero = 0
+                                    num_verificador = 0
+                                    str_municipio = ""
+                                    str_departamento = ""
+                                    for num in DPI:
+                                        if count_numero <= 9:
+                                            total_numero += int(num) * count_numero
+                                        elif count_numero == 10:
+                                            num_verificador = int(num)
+                                        elif count_numero == 11 or count_numero == 12:
+                                            str_departamento = str_departamento + num
+                                        elif count_numero == 13 or count_numero == 14:
+                                            str_municipio = str_municipio + num
+                                        count_numero = count_numero + 1
+                                    debug(chat_id, 'total_numero ' + str(total_numero), bot)
+                                    debug(chat_id, 'str_departamento ' + str(str_departamento), bot)
+                                    debug(chat_id, 'str_municipio ' + str(str_municipio), bot)
+                                    #banderas de validacion
+                                    flag_departamento = False
+                                    flag_municipio = False
+                                    flag_codigo = False
+                                    #validar que sea un departamento valido
+                                    departamento = int(str_departamento)
+                                    if departamento >= 1 and departamento <= 22:
+                                        flag_departamento = True
+                                    #validar que sea un municipio valido
+                                    municipio = int(str_municipio)
+                                    if munisPorDepto[departamento - 1] >= municipio:
+                                        flag_municipio = True
+                                    #validar que el codigo sea valido
+                                    validar = total_numero%11
+                                    if validar == num_verificador :
+                                        flag_codigo = True
+                                    if flag_departamento == True and flag_municipio == True and flag_codigo == True:
+                                        validacion=6
+                                        debug(chat_id, 'validacion 6 ', bot)
+                                        #NIT valido
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                    else:
+                                        validacion=0
+                                        debug(chat_id, 'validacion 0 ', bot)
+                                except ValueError:
+                                    validacion=0
+                                    debug(chat_id, 'validacion 0 error ', bot)
                             else:
                                 validacion=0
                         #fdebug.close()
@@ -878,56 +1055,229 @@ def hook():
                                                             storage_value = flow_position)
                                 flow_position=flow_position-1
                                 flow_item = context.context_json[context.name][flow_position]
+                                if retrys==1:
+                                    flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                                       (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                                    db.bot_internal_error.update_or_insert((db.bot_internal_error.storage_owner == chat_id)&
+                                                                     (db.bot_internal_error.bot_id == bot.id),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    position_flow =int(flow_position_.storage_value)-1)
                                 #return messenger(bot, conn)
-                            else:
+                            #else:
                                 #r('sendMessage', dict(chat_id = chat_id,text = 'se han acabado los retrys enviando al contexto ... '))
-                                valsss=0
-                                return 0
+                                #valsss=0
+                                #return 0
                                 #return messenger(bot, conn)
                     if flow_item_eval['type'] == 'smartText' or flow_item_eval['type'] == 'smartReply':
                         validacion=0
                         if ('validation' in flow_item_eval):
                             #fdebug.write(flow_item_eval['validation']+'\n')
                             validacion+=int(flow_item_eval['validation'])
+                        debug(chat_id,
+                              'does this element validates input?: "%s"' % (validacion),
+                              bot)
                         if(validacion==1):#verificamos si la entrada es de tipo texto
                             #fdebug.write('Tipo texto: '+chat_text+'\n')
                             validacion=1
                         if(validacion==2):#verificamos si la entrada es de tipo numero
-                            #fdebug.write(chat_text+'\n')
                             import re
                             if re.match("^\d+$",chat_text.lower()):
                                 #fdebug.write('Es un numero \n')
                                 validacion=2
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==3):#verificamos si la entrada es un email
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search('[(a-z0-9\_\-\.)]+@[(a-z0-9\_\-\.)]+\.[(a-z)]{2,15}',chat_text.lower()):
+                            if re.search('^[_a-zA-Z0-9-]+(\.[_a-zA-Z0-9-]+)*@[a-zA-Z0-9-_]+(\.[a-zA-Z0-9-]+)*(\.[a-zA-Z]{2,4})$',chat_text.lower()):
                                 #fdebug.write('email correcto \n')
                                 validacion=3
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
                             #fdebug.write(chat_text+'\n')
                             import re
-                            if re.search("(\d |\d\d)(.|-|/)(\d |\d\d)(.|-|/)(d\d\d\d|\d\d)",chat_text.lower()):
+                            if re.search("^((0[1-9])|((1|2)[0-9])|(30|31))/((0[1-9])|10|11|12)/((1|2)[0-9][0-9][0-9])$",chat_text.lower()):
                                 #fdebug.write('fecha correcta \n')
                                 validacion=4
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                            else:
+                                validacion=0
+                        if(validacion==5):#verificamos si la entrada es un NIT valido
+                            debug(chat_id, 'Testing NIT validation', bot)
+                            import re
+                            if re.search('^(\d)+(-)(\d|k|K)$',chat_text.lower()):
+                                try:
+                                    #debug(chat_id, 'NIT', bot)
+                                    val_nit = chat_text.replace("-", "")
+                                    size_nit = len(val_nit)
+                                    sum_nit = 0
+                                    num_verificador = ""
+                                    #debug(chat_id, 'for', bot)
+                                    #debug(chat_id, 'size_nit ' + str(size_nit), bot)
+                                    for num in val_nit:
+                                        if size_nit > 1 :
+                                            sum_nit += int(num) * size_nit
+                                            size_nit = size_nit - 1
+                                        else:
+                                            num_verificador = num
+                                    debug(chat_id, 'num_verificador ' + num_verificador, bot)
+                                    debug(chat_id, 'sum_nit ' + str(sum_nit), bot)
+                                    cociente = sum_nit//11
+                                    total = sum_nit - (cociente*11)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    while cociente != 0 and total != 0:
+                                        cociente = total//11
+                                        total = total - (cociente*11)
+                                    debug(chat_id, 'total' + str(total), bot)
+                                    #debug(chat_id, 'cociente ' + str(cociente), bot)
+                                    if num_verificador == "k" or num_verificador == "K":
+                                        val = 11 - total
+                                        if val == 10:
+                                            #NIT valido
+                                            validacion=5
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                    else:
+                                        val = 11 - total
+                                        debug(chat_id, 'val' + str(val), bot)
+                                        if val == int(num_verificador):
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        elif val == 11 and int(num_verificador) == 0:
+                                            validacion=5
+                                            #NIT valido
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        else:
+                                            validacion=0
+                                        debug(chat_id, 'validacion ' + str(validacion), bot)
+                                except ValueError:
+                                    validacion=0
+                            else:
+                                validacion=0
+                        if(validacion==6):#verificamos si la entrada es un DPI valido
+                            debug(chat_id, 'Testing DPI validation', bot)
+                            import re
+                            if re.search('^(\d){13}$',chat_text.lower()):
+                                try:
+                                    DPI = chat_text
+                                    count_numero = 2
+                                    total_numero = 0
+                                    num_verificador = 0
+                                    str_municipio = ""
+                                    str_departamento = ""
+                                    for num in DPI:
+                                        if count_numero <= 9:
+                                            total_numero += int(num) * count_numero
+                                        elif count_numero == 10:
+                                            num_verificador = int(num)
+                                        elif count_numero == 11 or count_numero == 12:
+                                            str_departamento = str_departamento + num
+                                        elif count_numero == 13 or count_numero == 14:
+                                            str_municipio = str_municipio + num
+                                        count_numero = count_numero + 1
+                                    debug(chat_id, 'total_numero ' + str(total_numero), bot)
+                                    debug(chat_id, 'str_departamento ' + str(str_departamento), bot)
+                                    debug(chat_id, 'str_municipio ' + str(str_municipio), bot)
+                                    #banderas de validacion
+                                    flag_departamento = False
+                                    flag_municipio = False
+                                    flag_codigo = False
+                                    #validar que sea un departamento valido
+                                    departamento = int(str_departamento)
+                                    if departamento >= 1 and departamento <= 22:
+                                        flag_departamento = True
+                                    #validar que sea un municipio valido
+                                    municipio = int(str_municipio)
+                                    if munisPorDepto[departamento - 1] >= municipio:
+                                        flag_municipio = True
+                                    #validar que el codigo sea valido
+                                    validar = total_numero%11
+                                    if validar == num_verificador :
+                                        flag_codigo = True
+                                    if flag_departamento == True and flag_municipio == True and flag_codigo == True:
+                                        validacion=6
+                                        debug(chat_id, 'validacion 6 ', bot)
+                                        #NIT valido
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                            (db.bot_internal_storage.bot_id == bot.id)&
+                                            (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                    else:
+                                        validacion=0
+                                        debug(chat_id, 'validacion 0 ', bot)
+                                except ValueError:
+                                    validacion=0
+                                    debug(chat_id, 'validacion 0 error ', bot)
                             else:
                                 validacion=0
                         #fdebug.close()
                         if flow_item_eval['type'] == 'smartReply':
+                            debug(chat_id, 'flow_item_eval: "%s"' % (flow_item_eval), bot)
+                            debug(chat_id, 'validacion: "%i"' % (validacion), bot)
                             #check for smartReply with option without send_to
                             for reply in flow_item_eval['quick_replies']:
                                 valuation = chat_text.strip() == reply['title'].strip()
                                 debug(chat_id,
-                                      'testing avoid IA calls string1: "%s", string2: "%s"' % (chat_text.strip(),
+                                      'testing string1 before trying AI: "%s", string2: "%s"' % (chat_text.strip(),
                                                                                                reply['title'].strip()),
                                       bot)
                                 if valuation:
                                     validacion = 1
+                                    debug(chat_id,
+                                      'option matched: "%s", string2: "%s"' % (chat_text.strip(),reply['title'].strip()),
+                                      bot)
+                                    continue
                         debug(chat_id, 'evaluating smart_text/smart_reply, omitir_IA: "%s"' % (validacion), bot)
+                        if(validacion<1):
+                            debug(chat_id, 'Validation is %s' % (validacion), bot)
+                            selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
+                            retrys=0
+                            try:
+                                retrys=int(selretrys[0]['storage_value'].split("--")[0])
+                            except:
+                                retrys=0
+                            debug(chat_id, 'Retries: %s' % (retrys), bot)
                         if(validacion<1):
                             #Smart response validation request
                             import requests
@@ -1011,6 +1361,8 @@ def hook():
                                        (db.bot_internal_storage.bot_id == bot.id)&
                                        (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
                                     return messenger(bot, conn)
+#
+                debug(chat_id, 'After Testing AI, Before testing validation and smart items', bot)
                 if flow_item['type'] in ('checkPoint',
                                          'chatCenter',
                                          'validationText',
@@ -1031,6 +1383,7 @@ def hook():
                     db((db.bot_internal_storage.storage_owner == chat_id)&
                        (db.bot_internal_storage.bot_id == bot.id)&
                        (db.bot_internal_storage.storage_key == 'should_value_ai')).delete()
+                debug(chat_id, 'After Validation and Smart Items', bot)
                 #END SMART OBJECTS
                 #save the answer of the cliente in the bot_storage table
                 #checking if the flow item has the "store" property
@@ -1046,10 +1399,13 @@ def hook():
                                                                  storage_value = flow_item['store'])
                 next_position = flow_position + 1
                 #Make it back to 0
+                #debug(chat_id,'nextPOs %s contextjson %s'%(next_position,len(context.context_json[context.name])),bot)
                 if next_position >= len(context.context_json[context.name]):
+                    debug(chat_id,'entro al if heap',bot)
                     heap_ = db((db.bot_context_heap.storage_owner == chat_id)&
                                (db.bot_context_heap.bot_id == bot.id)).select(db.bot_context_heap.ALL, orderby=~db.bot_context_heap.id).first()
                     if(heap_!= None):
+                        debug(chat_id,'entro al if heap is not none',bot)
                         next_position=heap_.context_position
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
@@ -1058,11 +1414,15 @@ def hook():
                                                                     bot_id = bot.id,
                                                                     storage_key = 'current_context',
                                                                     storage_value = heap_.context_id)
+                        debug(chat_id,'IF heap context %s posicion %s'%(heap_.context_id,next_position),bot)
+                        #--------------------------------------------------------------------------
                         db(db.bot_context_heap.id == heap_.id).delete()
                     else:
                         next_position = 0
+                        debug(chat_id,'entro al else heap',bot)
                         #find the parent context and set to it
                         if context.parent_context is not None:
+                            debug(chat_id,'entro al if del else heap',bot)
                             db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
@@ -1070,6 +1430,7 @@ def hook():
                                                                 bot_id = bot.id,
                                                                 storage_key = 'current_context',
                                                                 storage_value = context.parent_context.id)
+                            debug(chat_id,'ELSE heap context %s'%(context.parent_context.id),bot)
                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -1077,6 +1438,8 @@ def hook():
                                                             bot_id = bot.id,
                                                             storage_key = 'flow_position',
                                                             storage_value = next_position)
+                debug(chat_id,'ELSE heap posicion %s'%(next_position),bot)
+                #debug(chat_id,'flow_item %s'%(flow_item),bot)
                 #phantom
                 flow_position_phantom_count = db((db.bot_phantom_context.storage_owner == chat_id)&
                                    (db.bot_phantom_context.bot_id == bot.id)).count()
@@ -1167,6 +1530,7 @@ def hook():
                         retrys=10000
                 #r('sendMessage', dict(chat_id = chat_id,text = 'numero de retrys '+str(retrys)))
                 if(retrys<1):
+                  try:
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
@@ -1174,6 +1538,9 @@ def hook():
                                                                 bot_id = bot.id,
                                                                 storage_key = 'current_context',
                                                                 storage_value = int(str(flow_item['sendTo'])))
+                    
+                  except:
+                    print("Error")
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -1538,6 +1905,7 @@ def hook():
             flow_position = db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+           
             if flow_position:
                 flow_position = int(flow_position.storage_value)
             else:

@@ -46,7 +46,44 @@ def authk():
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
-
+#------------------------
+@cors_allow
+@request.restful()
+def count_users():
+    response.view = 'generic.' + request.extension
+    def GET(**vars):
+        #ids = vars['id']
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        return dict(count = db(db.auth_user.id>0).count())
+    return locals()
+@cors_allow
+@request.restful()
+def auth_users():
+    response.view = 'generic.' + request.extension
+    def GET(**vars):
+        #ids = vars['id']
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        return dict(data = db(db.auth_user.id>0).select(db.auth_user.id,db.auth_user.first_name,db.auth_user.last_name,db.auth_user.email,db.auth_user.enabled_access))
+    return locals()
+@cors_allow
+@request.restful()
+def update_user():
+    response.view = 'generic.' + request.extension
+    def PUT(**vars):
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'],enabled_access=vars['enabled_access'])
+        return dict(data = 'ok')
+    return locals()
+@cors_allow
+@request.restful()
+def disabled_user():
+    response.view = 'generic.' + request.extension
+    def PUT(**vars):
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'])
+        return dict(data = 'ok')
+    return locals()
+#-----------------------------
 @cors_allow
 @request.restful()
 def password_reset():
@@ -158,7 +195,7 @@ def bot_conversations():
         #getting the logged chats with a bot, delimited by a number of data
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
-        return dict(data = db(db.conversation.bot_id == bot_id).select(db.conversation.id, db.conversation.storage_owner, db.conversation.ctype, db.conversation.ccontent, db.conversation.message_date,db.conversation.message_time,db.conversation.origin, db.conversation.medium, db.conversation.content_type, limitby=(v_start_limit,v_end_limit)))
+        return dict(data = db(db.conversation.bot_id == bot_id).select(db.conversation.id, db.conversation.storage_owner, db.conversation.ctype, db.conversation.ccontent, db.conversation.message_date,db.conversation.message_time,db.conversation.origin, db.conversation.medium, db.conversation.content_type, limitby=(v_start_limit,v_end_limit), orderby=db.conversation.id))
     return locals()
 
 @cors_allow
