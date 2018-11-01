@@ -6,6 +6,7 @@ def cors_origin():
                        'https://demo.botprotec.com':'https://demo.botprotec.com',
                        'https://bancredit.botprotec.com':'https://bancredit.botprotec.com',
                        'https://grupo-veraz.botprotec.com':'https://grupo-veraz.botprotec.com',
+                       'https://arrend.botprotec.com':'https://arrend.botprotec.com',
                        'http://localhost:9090': 'http://localhost:9090'}
     o = "%s" %(request.env['HTTP_ORIGIN'])
     origin = allowed_origins.get(o)
