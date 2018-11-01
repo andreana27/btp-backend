@@ -56,7 +56,8 @@ from gluon.tools import Auth, Service, PluginManager
 auth = Auth(db)
 auth.settings.extra_fields['auth_user']= [
   Field('api_token', 'string'),
-  Field('token_datetime', 'datetime')]
+  Field('token_datetime', 'datetime'),
+  Field('enabled_access', 'string',default='enable')]
 service = Service()
 plugins = PluginManager()
 
@@ -124,6 +125,11 @@ db.define_table('bot_internal_storage',
                 Field('storage_owner', 'string'),
                 Field('storage_key', 'string'),
                 Field('storage_value', 'text'))
+
+db.define_table('bot_internal_error',
+                Field('bot_id', 'reference bot'),
+                Field('storage_owner', 'string'),
+                Field('position_flow', 'string'))
 
 db.define_table('bot_context_heap',
                 Field('bot_id', 'reference bot'),
