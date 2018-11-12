@@ -46,7 +46,16 @@ def authk():
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
-#------------------------
+#-----------prueba decoradores---------------
+@cors_allow
+@request.restful()
+@aviso
+def abrir_puerta():
+    response.view = 'generic.' + request.extension
+    def GET(id):
+        return dict(user = "entro user: "+id)
+    return locals()
+#------Users update 29/10/2018--------
 @cors_allow
 @request.restful()
 def count_users():
@@ -60,7 +69,7 @@ def count_users():
 @request.restful()
 def auth_users():
     response.view = 'generic.' + request.extension
-    def GET(**vars):
+    def POST(**vars):
         #ids = vars['id']
         #return dict(data = db(db.auth_user.id == bot_id).select())
         return dict(data = db(db.auth_user.id>0).select(db.auth_user.id,db.auth_user.first_name,db.auth_user.last_name,db.auth_user.email,db.auth_user.enabled_access))
@@ -76,14 +85,147 @@ def update_user():
     return locals()
 @cors_allow
 @request.restful()
-def disabled_user():
+def delete_user():
+    response.view = 'generic.' + request.extension
+    def GET(id):
+        db((db.auth_user.id==id)).delete()
+        return dict(data ='ok')
+    return locals()
+#***********Roles***********************
+@cors_allow
+@request.restful()
+def create_role():
+    response.view = 'generic.' + request.extension
+    def GET(**vars):
+        db.auth_group.insert(
+            role = vars['role'],
+            description = vars['description'])
+        return dict(data = 'ok')
+    return locals()
+@cors_allow
+@request.restful()
+def add_user_role():
+    response.view = 'generic.' + request.extension
+        #return dict(count = db(db.auth_group.role == role).count())
+    def GET(id,group):
+        response='ok add'
+        if(db((db.auth_membership.user_id == id) &(db.auth_membership.group_id == group) ).count()<1):
+            db.auth_membership.insert(user_id = id,group_id = group)
+        else:
+            response='user already exists'
+        return dict(data = response)
+    return locals()
+@cors_allow
+@request.restful()
+def group_membership():
+    response.view = 'generic.' + request.extension
+    def GET(id):#POST
+        #group=vars['id']
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        return dict(data = db((db.auth_user.id==db.auth_membership.user_id)&(db.auth_membership.group_id==id)).select(db.auth_user.id,db.auth_user.first_name,db.auth_user.last_name))
+    return locals()
+@cors_allow
+@request.restful()
+def count_roles():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):#POST
+        #ids = vars['id']
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        #db.executesql('SELECT count(auth_membership) FROM auth_membership LEFT JOIN auth_group ON auth_group.id=auth_membership.group_id;')
+        return dict(count =db((db.auth_group.id>0)).count() )
+    return locals()
+@cors_allow
+@request.restful()
+def select_roles():
+    response.view = 'generic.' + request.extension
+    def POST(**vars):#POST
+        #ids = vars['id']
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        #db.executesql('SELECT count(auth_membership) FROM auth_membership LEFT JOIN auth_group ON auth_group.id=auth_membership.group_id;')
+        return dict(data =db((db.auth_group.id>0)).select() )
+    return locals()
+@cors_allow
+@request.restful()
+def delete_Userinroles():
+    response.view = 'generic.' + request.extension
+    def GET(id,group):
+        db((db.auth_membership.user_id==id)&(db.auth_membership.group_id==group)).delete()
+        return dict(data ='ok')
+    return locals()
+@cors_allow
+@request.restful()
+def count_membership():
+    response.view = 'generic.' + request.extension
+    def GET(id):
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        return dict(count = db((db.auth_membership.user_id==db.auth_user.id)&(db.auth_group.id==db.auth_membership.group_id)&(db.auth_membership.group_id==id)).count())
+    return locals()
+@cors_allow
+@request.restful()
+def role():
+    response.view = 'generic.' + request.extension
+    def GET(role):
+        #this function is only for verificaction of user existance
+        return dict(count = db(db.auth_group.role == role).count())
+    def PUT(**vars):
+        #role record is created
+        db.auth_group.insert(
+            role = vars['role'],
+            description = vars['description'],
+            access_role = 'enable')
+        search=db(db.auth_group.role == vars['role']).select(db.auth_group.id)
+        return dict(data = search)
+    return locals()
+@cors_allow
+@request.restful()
+def update_role():
     response.view = 'generic.' + request.extension
     def PUT(**vars):
         #return dict(data = db(db.auth_user.id == bot_id).select())
-        db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'])
+        db(db.auth_group.id == vars['id']).update(role = vars['role'],description = vars['description'],access_role=vars['access_role'])
+        return dict(data = 'ok update')
+    return locals()
+
+@cors_allow
+@request.restful()
+def table_name():
+    response.view = 'generic.' + request.extension
+    def GET(**vars):
+        nombre=db.executesql('SELECT table_name FROM information_schema.tables WHERE table_schema= \'public\' AND table_type=\'BASE TABLE\';')
+        return dict(grid=nombre)
+    return locals()
+#***********************permissions***********************
+@cors_allow
+@request.restful()
+def permission_role():
+    response.view = 'generic.' + request.extension
+    def GET(id,name,tabla):
+        #this function is only for verificaction of existance
+        #return dict(count = db((db.auth_permission.group_id == id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==tabla)).count())
+    #def PUT(**vars):
+        #permission record is created
+        auth.add_permission(id,name,("db."+tabla))
+        #auth.add_permission(vars['id'],vars['name'],("db."+vars['tabla']))
         return dict(data = 'ok')
     return locals()
-#-----------------------------
+@cors_allow
+@request.restful()
+def select_permission():
+    response.view = 'generic.' + request.extension
+    def GET(id):#POST
+        #count = db.auth_permission.table_name.count()
+        result = db(db.auth_permission.group_id==id).select(db.auth_permission.table_name,db.auth_permission.name,orderby=db.auth_permission.table_name)
+        return dict(data=result)
+    return locals()
+@cors_allow
+@request.restful()
+def delete_permission():
+    response.view = 'generic.' + request.extension
+    def GET(id,name,table):
+        db((db.auth_permission.group_id==id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==("db."+table))).delete()
+        return dict(data ='ok')
+    return locals()
+#----------------------------------------------------------
 @cors_allow
 @request.restful()
 def password_reset():
@@ -153,7 +295,8 @@ def user():
             password=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(vars['password'])[0]),
             #password=db.auth_user.password.validate(vars['password']),
             api_token = generatedToken,
-            token_datetime = current_date)
+            token_datetime = current_date,
+            enabled_access='enable')
         #return dict(token = db(db.auth_user.email == userData.first_name).select(db.auth_user.api_token))
         return dict(data = generatedToken)
     return locals()

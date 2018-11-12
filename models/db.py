@@ -58,6 +58,8 @@ auth.settings.extra_fields['auth_user']= [
   Field('api_token', 'string'),
   Field('token_datetime', 'datetime'),
   Field('enabled_access', 'string',default='enable')]
+auth.settings.extra_fields['auth_group']= [
+  Field('access_role', 'string',default='enable')]
 service = Service()
 plugins = PluginManager()
 
@@ -127,8 +129,8 @@ db.define_table('bot_internal_storage',
                 Field('storage_value', 'text'))
 
 db.define_table('bot_internal_error',
-                Field('bot_id', 'reference bot'),
                 Field('storage_owner', 'string'),
+                Field('chat_text', 'string'),
                 Field('position_flow', 'string'))
 
 db.define_table('bot_context_heap',

@@ -34,3 +34,4 @@ def cors_allow(action):
     f.__dict__.update(action.__dict__)
 
     return f
+#---------------------------------------------------
