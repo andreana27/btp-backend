@@ -11,7 +11,7 @@ def cors_origin():
                        'http://localhost:9090': 'http://localhost:9090',
 		       'http://localhost:9000': 'http://localhost:9000'}
 
-                       
+
     o = "%s" %(request.env['HTTP_ORIGIN'])
     origin = allowed_origins.get(o)
     headers = {}
@@ -26,7 +26,7 @@ def cors_origin():
         headers['Content-Type'] = None
         raise HTTP(200, '', **headers)
 
-
+#-----
 def cors_allow(action):
 
     def f(*args, **kwargs):

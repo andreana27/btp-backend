@@ -128,9 +128,9 @@ db.define_table('bot_internal_storage',
                 Field('storage_key', 'string'),
                 Field('storage_value', 'text'))
 
-db.define_table('bot_internal_error',
+db.define_table('bot_context_error',
+                Field('bot_id', 'reference bot'),
                 Field('storage_owner', 'string'),
-                Field('chat_text', 'string'),
                 Field('position_flow', 'string'))
 
 db.define_table('bot_context_heap',

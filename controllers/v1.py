@@ -47,13 +47,44 @@ def authk():
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
 #-----------prueba decoradores---------------
+def decorator_of_test(f):
+    def inner(*args):
+        token=args[0]
+        searchUser=db((db.auth_user.api_token==token)&(db.auth_user.enabled_access=='enable')).select().first()
+        if searchUser:#found
+            #search Role
+            searchRole=db((db.auth_membership.user_id==searchUser.id)).select().first()
+            if searchRole:
+                #search permission &(db.auth_permission.table_name.contains(args[]))
+                searchPermission=db((db.auth_permission.group_id==int(searchRole.group_id))&(db.auth_permission.table_name==args[2])).select().first()
+                if searchPermission:
+                    return f(*args)#searchPermission.name +" "+searchPermission.table_name+" "+args[2]#
+                else:
+                    #raise HTTP(401)
+                    return dict(info="401 UNAUTHORIZED")
+            else:
+                #raise HTTP(401)
+                return dict(info="401 UNAUTHORIZED")
+        else:
+            #raise HTTP(401)
+            return dict(info="401 UNAUTHORIZED")
+    return inner
+
+'''@cors_allow
+@request.restful()
+def test_decorator():
+    @decorator_of_test
+    def GET(value):
+        return value
+    return locals()'''
+
 @cors_allow
 @request.restful()
-@aviso
-def abrir_puerta():
+def prueba_decorador():
     response.view = 'generic.' + request.extension
-    def GET(id):
-        return dict(user = "entro user: "+id)
+    @decorator_of_test
+    def GET(id,name,table):
+        return dict(info="acceso concedido")
     return locals()
 #------Users update 29/10/2018--------
 @cors_allow
@@ -204,7 +235,8 @@ def permission_role():
         #return dict(count = db((db.auth_permission.group_id == id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==tabla)).count())
     #def PUT(**vars):
         #permission record is created
-        auth.add_permission(id,name,("db."+tabla))
+        #("db."+tabla)
+        auth.add_permission(id,name,tabla)
         #auth.add_permission(vars['id'],vars['name'],("db."+vars['tabla']))
         return dict(data = 'ok')
     return locals()
@@ -222,7 +254,8 @@ def select_permission():
 def delete_permission():
     response.view = 'generic.' + request.extension
     def GET(id,name,table):
-        db((db.auth_permission.group_id==id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==("db."+table))).delete()
+        #("db."+tabla)
+        db((db.auth_permission.group_id==id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==table)).delete()
         return dict(data ='ok')
     return locals()
 #----------------------------------------------------------

@@ -95,6 +95,7 @@ def hook():
                                   message = dict(text = text)))
             def validationText(chat_id, flow_item, bot, **vars):
                 keyboard = []
+                debug(chat_id,'inciio bloque VT',bot)
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 retrys=0
                 try:
@@ -107,26 +108,48 @@ def hook():
                     retrys=int(flow_item['retry'])
                     if(int(flow_item['retry'])==0):
                         retrys=10000
-                debug(chat_id,'repeticiones VT %s maxRepet %s'%(retrys,repet),bot)
+                #debug(chat_id,'repeticiones VT %s maxRepet %s'%(retrys,repet),bot)
+                #debug(chat_id,'context IFVT  %s'%(flow_item['sendTo']),bot)
                 if(retrys<1):
+                    position_value=0
                     try:
-                        debug(chat_id,'context IFVT  %s '%(int(str(flow_item['sendTo']))),bot)
-                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                        if flow_item['sendTo']!=None:
+                            debug(chat_id,'if sendTo',bot)
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'current_context'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
                                                                     storage_key = 'current_context',
                                                                     storage_value = int(str(flow_item['sendTo'])))
-                    except:
-                        debug(chat_id,'Exception validationText',bot)
+                        else:
+                            debug(chat_id,'else sendTo',bot)
+                            current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                       (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                            flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                            position_value=int(flow_position_.storage_value)
+                            #------------------------------------------------------------------------------------------------
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = int(str(current_context_.storage_value)))
+                    except Exception as e:
+                        #------------------------------------------------------------------------------
+                        debug(chat_id,'Exception validationText %s'%(e),bot)
+                        #----------------------------------------------------------------
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
                                                                     storage_key = 'flow_position',
-                                                                    storage_value=0)
+                                                                    storage_value=position_value)#0
                     db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -155,7 +178,7 @@ def hook():
                                        (db.bot_internal_storage.storage_key == 'current_context')).select().first()
                     debug(chat_id,'context actual %s posicion actual %s'%(current_context_.storage_value,flow_position_.storage_value),bot)
                     #-----------------------------------------------------------------------------------------------
-                    if retrys==repet or flow_item.get('onError') == None:
+                    if retrys==repet or retrys==10000 or flow_item.get('onError') == None:
                         try:
                             db(db.bot_context_heap.bot_id ==bot.id).delete()
                         except:
@@ -185,21 +208,41 @@ def hook():
                         retrys=10000
                 debug(chat_id,'repeticiones VR %s maxRepet %s'%(retrys,repet),bot)
                 if(retrys<1):
+                    position_value=0
                     debug(chat_id,'if VR',bot)
-                    db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                    if flow_item['sendTo']!=None:
+                        debug(chat_id,'if con sendto',bot)
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                  (db.bot_internal_storage.bot_id == bot.id)&
                                                                  (db.bot_internal_storage.storage_key == 'current_context'),
                                                                 storage_owner = chat_id,
                                                                 bot_id = bot.id,
                                                                 storage_key = 'current_context',
                                                                 storage_value = int(str(flow_item['sendTo'])))
+                    else:
+                        debug(chat_id,'else sin sendto',bot)
+                        current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                       (db.bot_internal_storage.bot_id == bot.id)&
+                                       (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                        flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                        position_value=int(flow_position_.storage_value)
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                     (db.bot_internal_storage.bot_id == bot.id)&
+                                                                     (db.bot_internal_storage.storage_key == 'current_context'),
+                                                                    storage_owner = chat_id,
+                                                                    bot_id = bot.id,
+                                                                    storage_key = 'current_context',
+                                                                    storage_value = int(str(current_context_.storage_value)))
+                    #---------******************************************************************************---------------------
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'flow_position'),
                                                                     storage_owner = chat_id,
                                                                     bot_id = bot.id,
                                                                     storage_key = 'flow_position',
-                                                                    storage_value = 0)
+                                                                    storage_value = position_value)#0
                     db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -208,7 +251,7 @@ def hook():
                                (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                     return messenger(bot, conn)
                 else:
-                    debug(chat_id,'else VR',bot)
+                    debug(chat_id,'else VR %s'%(str(retrys)),bot)
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'retryReply'),
@@ -226,10 +269,6 @@ def hook():
                                        payload = ''))
                         if q['sendTo']:
                             send_to.append(':'.join([q['title'], str(q['sendTo'])]))
-                            '''db.bot_context_heap.insert(storage_owner = chat_id,
-                                                               bot_id = bot.id,
-                                                               context_id = current_context_.storage_value,
-                                                               context_position = int(flow_position_.storage_value)-1)'''
                     #-------------------------------------------------------------------------------------------
                     #save the send_to, "string_match:context_id,..."
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -247,9 +286,9 @@ def hook():
                     current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                        (db.bot_internal_storage.bot_id == bot.id)&
                                        (db.bot_internal_storage.storage_key == 'current_context')).select().first()
-                    debug(chat_id,'context actual %s posicion actual %s'%(current_context_.storage_value,flow_position_.storage_value),bot)
+                    debug(chat_id,'context actual VR %s posicion actual %s'%(current_context_.storage_value,flow_position_.storage_value),bot)
                     #-------------------------------------------------------------------------------------------
-                    if retrys==repet or flow_item.get('onError') == None:
+                    if retrys==repet or retrys==10000 or flow_item.get('onError') == None:
                         debug(chat_id,'primer contenido',bot)
                         try:
                             db(db.bot_context_heap.bot_id ==bot.id).delete()
@@ -279,6 +318,20 @@ def hook():
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 return r(dict(recipient = dict(id = chat_id),
                               message = dict(text = flow_item['content'])))
+
+            #captcha method
+            def captcha(chat_id, flow_item, bot, **vars):
+                log_conversation(chat_id, flow_item['message'], bot.id, 'sent', 'text')
+                retry = flow_item['validation']
+                message = flow_item['message']
+                response = chat_text.strip()
+                return r(
+                    dict(
+                        recipient = dict(id = chat_id),
+                        message = dict(text = response)
+                    )
+                )
+
             def checkPoint(chat_id, flow_item, bot, **vars):
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 import datetime
@@ -480,7 +533,8 @@ def hook():
                     'validationReply':validationReply,
                     'checkPoint':checkPoint,
                     'decisionRest':decisionRest,
-                    'smartReply': smartReply}
+                    'smartReply': smartReply,
+                    'captcha': captcha}
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json
             json_envelope = json.dumps(request.vars)
@@ -656,8 +710,9 @@ def hook():
                 flow_position = db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
-                debug(chat_id, 'flow position p1 "%s"' % (flow_position), bot)
+                #debug(chat_id, 'flow position p1 "%s"' % (flow_position), bot)
                 if flow_position:
+                    #---------------------------------------------------------------
                     flow_position = int(flow_position.storage_value)
                     debug(chat_id, 'flow position IF "%s"' % (flow_position), bot)
                 else:
@@ -671,8 +726,9 @@ def hook():
                 except:
                     should_value_ai = None
                 try:
+                    #-------------------------------------------------------------------------
+                    debug(chat_id, 'flow position TRY "%s"' % (flow_position), bot)
                     flow_item = context.context_json[context.name][flow_position]
-                    #debug(chat_id, 'flow position try "%s"' % (flow_position), bot)
                 except:
                     flow_item = None
                 debug(chat_id, 'flow position, context: "%s", "%s"' % (flow_position, context.name), bot)
@@ -711,6 +767,9 @@ def hook():
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
                             db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                            db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                         if(validacion==2):#verificamos si la entrada es de tipo numero
@@ -727,6 +786,9 @@ def hook():
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
@@ -739,6 +801,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -757,6 +822,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -804,6 +872,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                             try:
                                                 db(db.bot_context_heap.bot_id ==bot.id).delete()
@@ -822,6 +893,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                             try:
                                                 db(db.bot_context_heap.bot_id ==bot.id).delete()
@@ -833,6 +907,9 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -894,6 +971,9 @@ def hook():
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                           (db.bot_internal_storage.bot_id == bot.id)&
+                                           (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -960,13 +1040,18 @@ def hook():
                             except:
                                 pass
                         if(validacion==2):#verificamos si la entrada es de tipo numero
+                            debug(chat_id,'validacion numero VR',bot)
                             import re
                             if re.match("^\d+$",chat_text.lower()):
+                                debug(chat_id,' IF validacion numero VR',bot)
                                 #fdebug.write('Es un numero \n')
                                 validacion=2
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -975,6 +1060,7 @@ def hook():
                                 except:
                                     pass
                             else:
+                                debug(chat_id,' ELSE validacion numero VR',bot)
                                 validacion=0
                         if(validacion==3):#verificamos si la entrada es un email
                             #fdebug.write(chat_text+'\n')
@@ -988,6 +1074,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 try:
                                     db(db.bot_context_heap.bot_id ==bot.id).delete()
                                 except:
@@ -1003,6 +1092,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -1050,6 +1142,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                             try:
                                                 db(db.bot_context_heap.bot_id ==bot.id).delete()
@@ -1068,6 +1163,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                             try:
                                                 db(db.bot_context_heap.bot_id ==bot.id).delete()
@@ -1079,6 +1177,9 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -1141,6 +1242,9 @@ def hook():
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
+                                           (db.bot_internal_storage.bot_id == bot.id)&
+                                           (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                         try:
@@ -1157,6 +1261,7 @@ def hook():
                                 validacion=0
                         #fdebug.close()
                         if(validacion<1):
+                            debug(chat_id,'no paso validaciones',bot)
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'retryReply')).select(db.bot_internal_storage.storage_value)
@@ -1213,6 +1318,9 @@ def hook():
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
@@ -1227,6 +1335,9 @@ def hook():
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
                             else:
                                 validacion=0
@@ -1239,6 +1350,9 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -1282,6 +1396,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                         else:
                                             validacion=0
@@ -1296,6 +1413,9 @@ def hook():
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
                                         elif val == 11 and int(num_verificador) == 0:
                                             validacion=5
@@ -1303,6 +1423,9 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                            db((db.bot_internal_storage.storage_owner == chat_id)&
+                                               (db.bot_internal_storage.bot_id == bot.id)&
+                                               (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
@@ -1360,6 +1483,9 @@ def hook():
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'retryText')).delete()
+                                        db((db.bot_internal_storage.storage_owner == chat_id)&
+                                           (db.bot_internal_storage.bot_id == bot.id)&
+                                           (db.bot_internal_storage.storage_key == 'retryReply')).delete()
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'send_to')).delete()
