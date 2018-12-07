@@ -85,6 +85,37 @@ def hook():
                                        medium = 'messenger',
                                        content_type = content_type)
             import requests
+
+            #method to return the current context
+            def get_current_context(current_chat_id, current_bot_id):
+                debug(chat_id, "c chat id: {}, c bot id: {}".format(current_chat_id, current_bot_id), bot)
+                #GET CURRENT CONTEXT SEARCH
+                user_current_context = db((db.bot_internal_storage.storage_owner == current_chat_id)&
+                                       (db.bot_internal_storage.bot_id == current_bot_id)&
+                                       (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                #CHECK IF USER CURRENT CONTEXT NOT HAS VALUE
+                if not user_current_context:
+                    user_current_context = db((db.bot_context.bot_id == current_bot_id)&(db.bot_context.name == 'default')).select().first()
+                else:
+                    user_current_context = db((db.bot_context.id) == int(user_current_context.storage_value)).select().first()
+                #RETURN CURRENT CONTEXT
+                debug(chat_id, "c context: {}".format(str(user_current_context)), bot)
+                return user_current_context
+
+            #method to return if captcha intents exist
+            def get_captcha_intents(current_chat_id, current_bot_id):
+                #GET CURRENT CAPTCHA INTENTS SEARCH
+                captcha_intents = db(
+                    (db.bot_internal_storage.storage_owner == current_chat_id) &
+                    (db.bot_internal_storage.bot_id == current_bot_id) &
+                    (db.bot_internal_storage.storage_key == 'captcha_intents')
+                ).select().first()
+                if not captcha_intents:
+                    #RETURN NONE IF CAPTCHA INTENTS NOT EXIST
+                    return None
+                #RETURN CAPTCHA INTENTS ITEM
+                return captcha_intents
+
             def r(envelope):
                 uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
                 resu = requests.post(uri, json=envelope)
@@ -319,18 +350,126 @@ def hook():
                 return r(dict(recipient = dict(id = chat_id),
                               message = dict(text = flow_item['content'])))
 
-            #captcha method
+            #captcha_method
             def captcha(chat_id, flow_item, bot, **vars):
+                from captcha.image import ImageCaptcha
+                import random
+                import string
+                import base64
+                #path for fonts and images
+                fonts_path = '/opt/web2py_apps/web2py.production/applications/backend/static/fonts/captcha_fonts/'
+                font_name = fonts_path + 'Nobile-Medium.ttf'
+                captcha_images_path = '/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/'
+                public_captcha_images_path = 'https://demo-backend.botprotec.com/backend/static/images/captcha_images/'
+                #settings
+                image = ImageCaptcha(fonts=[font_name])
+                #idkw
                 log_conversation(chat_id, flow_item['message'], bot.id, 'sent', 'text')
+                #get validation request
                 retry = flow_item['validation']
+                #get message if captcha not resolved
                 message = flow_item['message']
-                response = chat_text.strip()
-                return r(
-                    dict(
-                        recipient = dict(id = chat_id),
-                        message = dict(text = response)
-                    )
+                #get length captcha generator use for captcha
+                length = int(flow_item['length'])
+                #create captcha value
+                captcha_quest = "".join([random.choice(string.letters) for i in xrange(length)])
+                captcha_quest = captcha_quest.lower()
+                #create captcha quest route
+                captcha_image_route = captcha_images_path + captcha_quest + ".png"
+                public_captcha_image_route = public_captcha_images_path + captcha_quest + ".png"
+                #generate image
+                image_created = image.write(captcha_quest, captcha_image_route)
+                db.bot_internal_storage.update_or_insert(
+                    (db.bot_internal_storage.storage_owner == chat_id) &
+                    (db.bot_internal_storage.bot_id == bot.id) &
+                    (db.bot_internal_storage.storage_key == 'captcha_quest'),
+                    storage_owner = chat_id,
+                    bot_id = bot.id,
+                    storage_key = 'captcha_quest',
+                    storage_value = captcha_quest
                 )
+                return r(dict(
+                        recipient = dict(id = chat_id),
+                        message = dict(
+                            attachment = dict(
+                                type = 'image',
+                                payload = dict(url = str(public_captcha_image_route))
+                            )
+                        )
+                    ))
+
+            #validation count method
+            def countValidation(chat_id, flow_item, bot, **vars):
+
+                item_id = 'count_validation_{}'.format(flow_item['id'])
+                item_intents = flow_item['limit']
+                item_users_excluded = flow_item['users']
+                item_send_to = flow_item['sendTo']
+                message = flow_item['message']
+
+                check_intents = db(
+                    (db.bot_internal_storage.storage_owner == chat_id) &
+                    (db.bot_internal_storage.bot_id == bot.id) &
+                    (db.bot_internal_storage.storage_key ==  '{}_intents'.format(item_id))
+                ).select(db.bot_internal_storage.storage_value)
+
+                if chat_id in item_users_excluded:
+                    return r(dict(recipient = dict(id = chat_id),
+                                  message = dict(text = "user excluded")))
+
+                if len(check_intents) == 0:
+                    db.bot_internal_storage.insert(
+                        storage_owner = chat_id,
+                        bot_id = bot.id,
+                        storage_key = '{}_intents'.format(item_id),
+                        storage_value = 1
+                    )
+                    #debug(chat_id,'primera vez',bot)
+                    #return r(dict(recipient = dict(id = chat_id),
+                    #              message = dict(text = "first")))
+                    return
+
+                else:
+                    #debug(chat_id,'otras veces',bot)
+
+                    intents = db(
+                        (db.bot_internal_storage.storage_owner == chat_id) &
+                        (db.bot_internal_storage.bot_id == bot.id) &
+                        (db.bot_internal_storage.storage_key ==  '{}_intents'.format(item_id))
+                    ).select(db.bot_internal_storage.storage_value).first().storage_value
+
+                    if(int(intents) < int(item_intents)):
+                        db.bot_internal_storage.update_or_insert(
+                            (db.bot_internal_storage.storage_owner == chat_id) &
+                            (db.bot_internal_storage.bot_id == bot.id) &
+                            (db.bot_internal_storage.storage_key == item_id + '_intents'),
+                            storage_value = int(check_intents[0].storage_value) + 1
+                        )
+                        #return r(dict(recipient = dict(id = chat_id),
+                        #          message = dict(text = "pass")))
+                        return
+                    else:
+
+                        db.bot_internal_storage.update_or_insert(
+                            (db.bot_internal_storage.storage_owner == chat_id) &
+                            (db.bot_internal_storage.bot_id == bot.id) &
+                            (db.bot_internal_storage.storage_key == 'current_context'),
+                            storage_owner = chat_id,
+                            bot_id = bot.id,
+                            storage_key = 'current_context',
+                            storage_value = int(item_send_to)
+                        )
+                        db.bot_internal_storage.update_or_insert(
+                            (db.bot_internal_storage.storage_owner == chat_id) &
+                            (db.bot_internal_storage.bot_id == bot.id) &
+                            (db.bot_internal_storage.storage_key == 'flow_position'),
+                            storage_owner = chat_id,
+                            bot_id = bot.id,
+                            storage_key = 'flow_position',
+                            storage_value = 0
+                        )
+                        return r(dict(recipient = dict(id = chat_id),
+                                  message = dict(text = message)))
 
             def checkPoint(chat_id, flow_item, bot, **vars):
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
@@ -348,15 +487,29 @@ def hook():
                 log_conversation(chat_id, flow_item['url'], bot.id, 'sent','attachment')
                 media_type = flow_item['media_type']
                 if media_type == 'link':
-                    result = dict(recipient = dict(id = chat_id),
-                              message = dict(attachment = dict(type = 'template',
-                                                               payload = dict(template_type = 'open_graph',
-                                                                              elements = [dict(url = flow_item['url'])]))))
+                    result = dict(
+                        recipient = dict(id = chat_id),
+                        message = dict(
+                            attachment = dict(
+                                type = 'template',
+                                payload = dict(
+                                    template_type = 'open_graph',
+                                    elements = [dict(url = flow_item['url'])]
+                                )
+                            )
+                        )
+                    )
                 else:
                     media_type = 'image'
-                    result = dict(recipient = dict(id = chat_id),
-                              message = dict(attachment = dict(type = media_type,
-                                                               payload = dict(url = flow_item['url']))))
+                    result = dict(
+                        recipient = dict(id = chat_id),
+                        message = dict(
+                            attachment = dict(
+                                type = media_type,
+                                payload = dict(url = flow_item['url'])
+                            )
+                        )
+                    )
                 import json
                 return r(result)
             def smarText(chat_id, flow_item, bot, **vars):
@@ -534,19 +687,33 @@ def hook():
                     'checkPoint':checkPoint,
                     'decisionRest':decisionRest,
                     'smartReply': smartReply,
-                    'captcha': captcha}
+                    'captcha': captcha,
+                    'countValidation': countValidation
+                   }
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json
             json_envelope = json.dumps(request.vars)
+
+            #debug(chat_id,'entrada0: %s'%(request.vars['entry']),bot)
             for entry in request.vars['entry']:
                 import json
+                import os
                 chat_id = entry['messaging'][0]['sender']['id']
+                #debug(chat_id,'entrada0: %s'%(chat_id),bot)
                 content_type = 'text'
+                #if entry['messaging'][0].get('message'):
                 if ('text' in entry['messaging'][0]['message']):
                     chat_text = entry['messaging'][0]['message']['text']
+                        #debug(chat_id,'entrada1: %s'%(chat_text),bot)
                 else:
                     chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
+                    #debug(chat_id,'entrada2: %s'%(chat_text),bot)
                     content_type = 'attachment'
+                #else:
+                #    chat_text = 'Empezar'
+                    #ad_ref = entry['messaging'][0]['referral']['ref']
+                #referal=entry['messaging']
+                debug(chat_id,'Message: -- %s' % (request.vars), bot)
                 debug(chat_id,
                       'Facebook Message: "%s"' % (json.dumps(entry)), bot)
                 if chat_text:
@@ -560,6 +727,12 @@ def hook():
                       bot)
                 resp=db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id))
                 needchat=False
+                 #check if bot is available
+                available = db(db.bot.id == bot.id).select().first().enabled
+                #kill bot flow if not available
+                if not available:
+                    return None
+                #check chat center
                 try:
                     needchat=resp.select(db.conversation.need_chat_center)[0]['need_chat_center']
                 except:
@@ -592,6 +765,143 @@ def hook():
                     #chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
                     #text(chat_id, dict(content = chat_text), bot)
                     #return
+
+                #Captcha test analize
+                #captcha_validate_values
+                item_flow_position = db(
+                    (db.bot_internal_storage.storage_owner == chat_id) &
+                    (db.bot_internal_storage.bot_id == bot.id) &
+                    (db.bot_internal_storage.storage_key == 'flow_position')
+                ).select()
+
+                if item_flow_position:
+                    item_flow_position = item_flow_position.first().storage_value
+
+                    context_to_eval = get_current_context(chat_id, bot.id)
+                    item_to_eval = context_to_eval.context_json[context_to_eval.name][int(item_flow_position) - 1]
+                    if item_to_eval['type'] == 'captcha':
+                        possible_captcha = db(
+                            (db.bot_internal_storage.storage_owner == chat_id) &
+                            (db.bot_internal_storage.bot_id == bot.id) &
+                            (db.bot_internal_storage.storage_key ==  'captcha_quest')
+                        ).select()
+                        if len(possible_captcha) > 0:
+                            possible_captcha = possible_captcha.first()
+                        else:
+                            possible_captcha = None
+                        if possible_captcha:
+                            value_to_compare = possible_captcha.storage_value
+                            image_route = "/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/{}.png".format(possible_captcha.storage_value)
+                            try:
+                                os.remove(image_route)
+                            except:
+                                pass
+                            db(
+                                (db.bot_internal_storage.storage_owner == chat_id) &
+                                (db.bot_internal_storage.bot_id == bot.id) &
+                                (db.bot_internal_storage.storage_key ==  'captcha_quest')
+                            ).delete()
+
+                            flow_position = db(
+                                (db.bot_internal_storage.storage_owner == chat_id) &
+                                (db.bot_internal_storage.bot_id == bot.id) &
+                                (db.bot_internal_storage.storage_key == 'flow_position')
+                            ).select().first().storage_value
+
+                            if str(chat_text.strip()) == str(value_to_compare):
+                                captcha_intents = get_captcha_intents(chat_id, bot.id)
+                                if captcha_intents:
+                                    db(
+                                        (db.bot_internal_storage.storage_owner == chat_id) &
+                                        (db.bot_internal_storage.bot_id == bot.id) &
+                                        (db.bot_internal_storage.storage_key == 'captcha_intents')
+                                    ).delete()
+                            else:
+                                captcha_current_context = get_current_context(chat_id, bot.id)
+                                flow_item = captcha_current_context.context_json[captcha_current_context.name][int(flow_position) - 1]
+                                limit = int(flow_item['validation'])
+                                captcha_intents = get_captcha_intents(chat_id, bot.id)
+
+                                if not captcha_intents:
+                                    db.bot_internal_storage.bulk_insert([{
+                                        'storage_owner': chat_id,
+                                        'bot_id': bot.id,
+                                        'storage_key': 'captcha_intents',
+                                        'storage_value': 1
+                                    }])
+
+                                    #debug(chat_id,'pos captcha %s'%((int(flow_position) - 1)),bot)
+                                    db.bot_internal_storage.update_or_insert(
+                                        (db.bot_internal_storage.storage_owner == chat_id) &
+                                        (db.bot_internal_storage.bot_id == bot.id) &
+                                        (db.bot_internal_storage.storage_key == 'flow_position'),
+                                        storage_owner = chat_id,
+                                        bot_id = bot.id,
+                                        storage_key = 'flow_position',
+                                        storage_value = (int(flow_position) - 1)
+                                    )
+                                    return messenger(bot, conn)
+
+                                elif int(captcha_intents.storage_value) < (int(limit) - 1):
+                                    db.bot_internal_storage.update_or_insert(
+                                        (db.bot_internal_storage.storage_owner == chat_id) &
+                                        (db.bot_internal_storage.bot_id == bot.id) &
+                                        (db.bot_internal_storage.storage_key == 'captcha_intents'),
+                                        storage_value = int(captcha_intents.storage_value) + 1
+                                    )
+
+                                    #debug(chat_id,'pos captcha %s'%((int(flow_position) - 1)),bot)
+                                    db.bot_internal_storage.update_or_insert(
+                                        (db.bot_internal_storage.storage_owner == chat_id) &
+                                        (db.bot_internal_storage.bot_id == bot.id) &
+                                        (db.bot_internal_storage.storage_key == 'flow_position'),
+                                        storage_owner = chat_id,
+                                        bot_id = bot.id,
+                                        storage_key = 'flow_position',
+                                        storage_value = (int(flow_position) - 1)
+                                    )
+                                    return messenger(bot, conn)
+                                else:
+                                    captcha_intents = get_captcha_intents(chat_id, bot.id)
+
+                                    if captcha_intents:
+                                        db.bot_internal_storage.update_or_insert(
+                                            (db.bot_internal_storage.storage_owner == chat_id) &
+                                            (db.bot_internal_storage.bot_id == bot.id) &
+                                            (db.bot_internal_storage.storage_key == 'backup_intents'),
+                                            storage_owner = chat_id,
+                                            bot_id = bot.id,
+                                            storage_key = 'backup_intents',
+                                            storage_value = int(captcha_intents.storage_value) + 1
+                                        )
+                                        db(
+                                            (db.bot_internal_storage.storage_owner == chat_id) &
+                                            (db.bot_internal_storage.bot_id == bot.id) &
+                                            (db.bot_internal_storage.storage_key == 'captcha_intents')
+                                        ).delete()
+
+                                    db.bot_internal_storage.update_or_insert(
+                                        (db.bot_internal_storage.storage_owner == chat_id) &
+                                        (db.bot_internal_storage.bot_id == bot.id) &
+                                        (db.bot_internal_storage.storage_key == 'flow_position'),
+                                        storage_owner = chat_id,
+                                        bot_id = bot.id,
+                                        storage_key = 'flow_position',
+                                        storage_value = 0
+                                    )
+                                    if captcha_current_context.parent_context:
+                                        db.bot_internal_storage.update_or_insert(
+                                            (db.bot_internal_storage.storage_owner == chat_id) &
+                                            (db.bot_internal_storage.bot_id == bot.id) &
+                                            (db.bot_internal_storage.storage_key == 'current_context'),
+                                            storage_owner = chat_id,
+                                            bot_id = bot.id,
+                                            storage_key = 'current_context',
+                                            storage_value = int(captcha_current_context.parent_context)
+                                        )
+
+                                    return messenger(bot, conn)
+
 
                 #lines to save the bot data was here
                 send_to = db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -1727,6 +2037,8 @@ def hook():
                                         flow_position = flow_position,
                                         current_context = current_context,
                                         context = context)
+
+                #value
                 if flow_item['type'] == 'sender_action':
                     return messenger(bot, conn)
                 if flow_item['type'] == 'end':
@@ -1735,6 +2047,14 @@ def hook():
                     return messenger(bot, conn)
                 if flow_item['type'] == 'decisionRest':
                     return messenger(bot, conn)
+                if flow_item['type'] == 'countValidation':
+                    return messenger(bot, conn)
+                #captcha_verification
+                '''if flow_item['type'] == 'captcha':
+                    return r(dict(recipient = dict(id = chat_id),
+                            message = "captcha here!"))'''
+                    #return messenger(bot, conn)
+
                 #for flow_item in context.context_json[context.name]:
                 #    flow[flow_item['type']](chat_id, flow_item)
                 return
@@ -1786,7 +2106,7 @@ def hook():
                                                                 bot_id = bot.id,
                                                                 storage_key = 'current_context',
                                                                 storage_value = int(str(flow_item['sendTo'])))
-                    
+
                   except:
                     print("Error")
                     db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
@@ -2061,8 +2381,9 @@ def hook():
                     'decisionRest':decisionRest,
                     'smartReply':smartReply}
             #raise Exception(vars)
-            chat_id = vars['message']['chat']['id']
-            chat_text = vars['message']['text']
+            chat_id = vars['id']
+            chat_user_name = vars['first_name']
+            chat_text = vars['text']
             resp=db((db.conversation.bot_id==bot.id)&(db.conversation.storage_owner==chat_id))
             needchat=False
             try:
@@ -2153,7 +2474,7 @@ def hook():
             flow_position = db((db.bot_internal_storage.storage_owner == chat_id)&
                                (db.bot_internal_storage.bot_id == bot.id)&
                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
-           
+
             if flow_position:
                 flow_position = int(flow_position.storage_value)
             else:
@@ -2839,6 +3160,7 @@ def hook():
                     'smartReply':smartReply}
             #raise Exception(vars)
             chat_id = vars['id']
+            chat_user_name = vars['first_name']
             chat_text = vars['text']
             send_to = db((db.bot_internal_storage.storage_owner == chat_id)&
                          (db.bot_internal_storage.bot_id == bot.id)&
