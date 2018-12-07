@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-
+#---------------------
 auth.settings.allow_basic_login = True
 #@auth.requires(token_auth, requires_login=False)
 @cors_allow
 @request.restful()
 def upload():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('Bot Management')
+    def POST(token,**vars):
         #return dict(file = dir(vars['data'].file))
         stream = vars['data'].file
         filename = vars['data'].filename
@@ -16,6 +17,19 @@ def upload():
     return locals()
 
 @cors_allow
+@request.restful()
+def bot_conversation_users():
+    from json import JSONEncoder
+
+    def GET(bot_id):
+        users = set()
+        for user in db(db.conversation.bot_id == bot_id).select():
+            users.add(user.storage_owner)
+
+        return response.json(users)
+
+    return locals()
+@cors_allow
 @cache.action()
 def download():
     """
@@ -23,75 +37,82 @@ def download():
     http://..../[app]/default/download/[filename]
     """
     return response.download(request, db)
-
+#----------------------------------
 @cors_allow
 @request.restful()
 def authk():
+    #---
     response.view = 'generic.' + request.extension
     def PUT(**vars):
         from gluon.tools import Auth
         #getting the login data
         email = vars['email']
         password = vars['password']
+        #policy
+        #policy=db(db.auth_policies.id>0).select()
         #login instruction
         user = auth.login_bare(email,password)
         first_name = ''
         last_name = ''
         api_token = ''
+        temporal=''
+        date_password=''
         if user:
             first_name = user.first_name
             last_name = user.last_name
             api_token = user.api_token
-        return dict(data = (api_token,first_name,last_name))
+            temporal=user.temporal_password
+            date_password=user.password_change
+        return dict(data = (api_token,first_name,last_name,temporal,date_password))
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
-#-----------prueba decoradores---------------
-def decorator_of_test(f):
-    def inner(*args):
-        token=args[0]
-        searchUser=db((db.auth_user.api_token==token)&(db.auth_user.enabled_access=='enable')).select().first()
-        if searchUser:#found
-            #search Role
-            searchRole=db((db.auth_membership.user_id==searchUser.id)).select().first()
-            if searchRole:
-                #search permission &(db.auth_permission.table_name.contains(args[]))
-                searchPermission=db((db.auth_permission.group_id==int(searchRole.group_id))&(db.auth_permission.table_name==args[2])).select().first()
-                if searchPermission:
-                    return f(*args)#searchPermission.name +" "+searchPermission.table_name+" "+args[2]#
-                else:
-                    #raise HTTP(401)
-                    return dict(info="401 UNAUTHORIZED")
+#-----------decoradores---------------
+def decora(valor):
+    def decorador_put(f):
+        def inner(*args,**kwargs):
+            token=args[0]
+            #------------------------------
+            searchUser=db((db.auth_user.api_token==token)&(db.auth_user.enabled_access=='enable')).select().first()
+            if searchUser:#found
+                #search Role
+                searchRole=db((db.auth_membership.user_id==searchUser.id)).select()
+                #rolenum=''
+                for cosa in searchRole:
+                    #rolenum=rolenum+" "+str(int(cosa.group_id))
+                    if searchRole:
+                        functionality=db((db.auth_functionality.role_id==int(cosa.group_id))&(db.auth_functionality.feature_id==db.auth_feature.id)).select()#.first()
+                        try:
+                            if functionality:
+                                for nombre in functionality:
+                                    if str(nombre.auth_feature.feature_name)==valor:
+                                        return f(*args,**kwargs)
+                            #else:
+                        except:
+                            raise HTTP(401)
+                    else:
+                        raise HTTP(401)
             else:
-                #raise HTTP(401)
-                return dict(info="401 UNAUTHORIZED")
-        else:
-            #raise HTTP(401)
-            return dict(info="401 UNAUTHORIZED")
-    return inner
-
-'''@cors_allow
-@request.restful()
-def test_decorator():
-    @decorator_of_test
-    def GET(value):
-        return value
-    return locals()'''
+                raise HTTP(401)
+            #----------------------------
+        return inner
+    return decorador_put
 
 @cors_allow
 @request.restful()
-def prueba_decorador():
+def feature_decorador():
     response.view = 'generic.' + request.extension
     @decorator_of_test
-    def GET(id,name,table):
-        return dict(info="acceso concedido")
+    def GET(token,name):
+        return dict(info="ok")
     return locals()
 #------Users update 29/10/2018--------
 @cors_allow
 @request.restful()
 def count_users():
     response.view = 'generic.' + request.extension
-    def GET(**vars):
+    #@decorator_back_('User Manager')
+    def GET(token,**vars):
         #ids = vars['id']
         #return dict(data = db(db.auth_user.id == bot_id).select())
         return dict(count = db(db.auth_user.id>0).count())
@@ -100,7 +121,8 @@ def count_users():
 @request.restful()
 def auth_users():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('User Manager')
+    def POST(token,**vars):
         #ids = vars['id']
         #return dict(data = db(db.auth_user.id == bot_id).select())
         return dict(data = db(db.auth_user.id>0).select(db.auth_user.id,db.auth_user.first_name,db.auth_user.last_name,db.auth_user.email,db.auth_user.enabled_access))
@@ -109,25 +131,97 @@ def auth_users():
 @request.restful()
 def update_user():
     response.view = 'generic.' + request.extension
-    def PUT(**vars):
-        #return dict(data = db(db.auth_user.id == bot_id).select())
-        db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'],enabled_access=vars['enabled_access'])
-        return dict(data = 'ok')
+    @decora('User Manager')
+    def PUT(token,**vars):
+        respuesta=db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'],enabled_access=vars['enabled_access'])
+        return dict(data = respuesta)
     return locals()
 @cors_allow
 @request.restful()
 def delete_user():
     response.view = 'generic.' + request.extension
-    def GET(id):
+    @decora('User Manager')
+    def GET(token,id):
         db((db.auth_user.id==id)).delete()
         return dict(data ='ok')
+    return locals()
+#*****************Profile & policies*********************
+@cors_allow
+@request.restful()
+def select_policies():
+    response.view = 'generic.' + request.extension
+    @decora('User Policies')
+    def POST(token,name):
+        respuesta=db(db.auth_policies.policies_name==name).select().first()
+        return dict(data = respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def update_policies():
+    response.view = 'generic.' + request.extension
+    #@decora('User Policies')
+    def POST(token,**vars):
+        if vars['name']=='expirable password':
+             respuesta=db(db.auth_policies.policies_name==vars['name']).update(policies_active=vars['status'],date_end=vars['fecha2'])
+        else:
+            #respuesta='else'
+            respuesta=db(db.auth_policies.policies_name==vars['name']).update(policies_active=vars['status'])
+        return dict(data = respuesta)
+    return locals()
+#................................
+@cors_allow
+@request.restful()
+def update_profile():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
+    def PUT(token,**vars):
+        import datetime
+        current_date=datetime.datetime.now()
+        password1=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(vars['password'])[0])
+        respuesta=db(db.auth_user.api_token == token).update(first_name = vars['first_name'],last_name = vars['last_name'],password=password1,password_change=current_date)
+        return dict(data = respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def view_temporal():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
+    def POST(token,**vars):
+        respuesta=db(db.auth_user.api_token == token).select(db.auth_user.temporal_password).first()
+        return dict(data = respuesta)
+    return locals()
+#----------------------------
+@cors_allow
+@request.restful()
+def temp_password():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
+    def PUT(token,**vars):
+        import datetime
+        current_date=datetime.datetime.now()
+        password1=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(vars['password'])[0])
+        respuesta=db(db.auth_user.api_token == token).update(password=password1,temporal_password=False,password_change=current_date)
+        return dict(data = respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def expira_password():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
+    def PUT(token,**vars):
+        import datetime
+        current_date=datetime.datetime.now()
+        password1=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(vars['password'])[0])
+        respuesta=db(db.auth_user.api_token == token).update(password=password1,temporal_password=False,password_change=current_date)
+        return dict(data = respuesta)
     return locals()
 #***********Roles***********************
 @cors_allow
 @request.restful()
 def create_role():
     response.view = 'generic.' + request.extension
-    def GET(**vars):
+    @decora('Role Manager')
+    def GET(token,**vars):
         db.auth_group.insert(
             role = vars['role'],
             description = vars['description'])
@@ -138,10 +232,12 @@ def create_role():
 def add_user_role():
     response.view = 'generic.' + request.extension
         #return dict(count = db(db.auth_group.role == role).count())
-    def GET(id,group):
+    @decora('Role Manager')
+    def POST(token,**vars):
+    #def GET(id,group):
         response='ok add'
-        if(db((db.auth_membership.user_id == id) &(db.auth_membership.group_id == group) ).count()<1):
-            db.auth_membership.insert(user_id = id,group_id = group)
+        if(db((db.auth_membership.user_id == vars['iduser']) &(db.auth_membership.group_id == vars['idrol']) ).count()<1):
+            db.auth_membership.insert(user_id = vars['iduser'],group_id = vars['idrol'])
         else:
             response='user already exists'
         return dict(data = response)
@@ -150,38 +246,27 @@ def add_user_role():
 @request.restful()
 def group_membership():
     response.view = 'generic.' + request.extension
-    def GET(id):#POST
-        #group=vars['id']
-        #return dict(data = db(db.auth_user.id == bot_id).select())
+    @decora('Role Manager')
+    def POST(token,id):#POST
         return dict(data = db((db.auth_user.id==db.auth_membership.user_id)&(db.auth_membership.group_id==id)).select(db.auth_user.id,db.auth_user.first_name,db.auth_user.last_name))
-    return locals()
-@cors_allow
-@request.restful()
-def count_roles():
-    response.view = 'generic.' + request.extension
-    def POST(**vars):#POST
-        #ids = vars['id']
-        #return dict(data = db(db.auth_user.id == bot_id).select())
-        #db.executesql('SELECT count(auth_membership) FROM auth_membership LEFT JOIN auth_group ON auth_group.id=auth_membership.group_id;')
-        return dict(count =db((db.auth_group.id>0)).count() )
     return locals()
 @cors_allow
 @request.restful()
 def select_roles():
     response.view = 'generic.' + request.extension
-    def POST(**vars):#POST
-        #ids = vars['id']
-        #return dict(data = db(db.auth_user.id == bot_id).select())
-        #db.executesql('SELECT count(auth_membership) FROM auth_membership LEFT JOIN auth_group ON auth_group.id=auth_membership.group_id;')
+    @decora('Role Manager')
+    def POST(token,**vars):#POST
         return dict(data =db((db.auth_group.id>0)).select() )
     return locals()
 @cors_allow
 @request.restful()
 def delete_Userinroles():
     response.view = 'generic.' + request.extension
-    def GET(id,group):
-        db((db.auth_membership.user_id==id)&(db.auth_membership.group_id==group)).delete()
-        return dict(data ='ok')
+    @decora('Role Manager')
+    def POST(token,**vars):
+    #def GET(id,group):
+        hola=db((db.auth_membership.user_id==vars['iduser'])&(db.auth_membership.group_id==vars['idrol'])).delete()
+        return dict(data =hola)
     return locals()
 @cors_allow
 @request.restful()
@@ -198,7 +283,8 @@ def role():
     def GET(role):
         #this function is only for verificaction of user existance
         return dict(count = db(db.auth_group.role == role).count())
-    def PUT(**vars):
+    @decora('Role Manager')
+    def PUT(token,**vars):
         #role record is created
         db.auth_group.insert(
             role = vars['role'],
@@ -211,12 +297,69 @@ def role():
 @request.restful()
 def update_role():
     response.view = 'generic.' + request.extension
-    def PUT(**vars):
+    @decora('Role Manager')
+    def PUT(token,**vars):
         #return dict(data = db(db.auth_user.id == bot_id).select())
-        db(db.auth_group.id == vars['id']).update(role = vars['role'],description = vars['description'],access_role=vars['access_role'])
-        return dict(data = 'ok update')
+        actual=db(db.auth_group.id == vars['id']).update(role = vars['role'],description = vars['description'],access_role=vars['access_role'])
+        return dict(data = actual)
     return locals()
-
+#***********Features********************
+@cors_allow
+@request.restful()
+def add_feature():
+    response.view = 'generic.' + request.extension
+        #return dict(count = db(db.auth_group.role == role).count())
+    @decora('Role Manager')
+    def GET(token,name):
+        response='ok add'
+        if(db((db.auth_feature.feature_name == name) ).count()<1):
+            db.auth_feature.insert(feature_name = name)
+        else:
+            response='user already exists'
+        return dict(data = response)
+    return locals()
+@cors_allow
+@request.restful()
+def select_features():
+    response.view = 'generic.' + request.extension
+    @decora('Role Manager')
+    def POST(token,**vars):
+        return dict(grid = db(db.auth_feature.id>0).select())
+    return locals()
+@cors_allow
+@request.restful()
+def select_functionality():
+    response.view = 'generic.' + request.extension
+    @decora('Role Manager')
+    def POST(token,id):#POST
+        #return dict(data = db(db.auth_user.id == bot_id).select())
+        return dict(data = db((db.auth_feature.id==db.auth_functionality.feature_id)&(db.auth_functionality.role_id==id)).select(db.auth_functionality.role_id,db.auth_functionality.feature_id,db.auth_feature.feature_name))
+    return locals()
+@cors_allow
+@request.restful()
+def add_functionality():
+    response.view = 'generic.' + request.extension
+        #return dict(count = db(db.auth_group.role == role).count())
+    @decora('Role Manager')
+    def POST(token,**vars):
+    #def POST(token,idrole,idfeature):
+        respuesta='ok add'
+        if(db((db.auth_functionality.feature_id == vars['idfeature'])&(db.auth_functionality.role_id==vars['id']) ).count()<1):
+            db.auth_functionality.insert(feature_id =vars['idfeature'],role_id=vars['id'])
+        else:
+            respuesta='already exists'
+        return dict(data = respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def delete_functionality():
+    response.view = 'generic.' + request.extension
+    @decora('Role Manager')
+    def POST(token,**vars):
+        hola=db((db.auth_functionality.role_id==vars['id'])&(db.auth_functionality.feature_id==vars['idfeature'])).delete()
+        return dict(data =hola)
+    return locals()
+#---------------------------------------------------------
 @cors_allow
 @request.restful()
 def table_name():
@@ -258,11 +401,21 @@ def delete_permission():
         db((db.auth_permission.group_id==id)&(db.auth_permission.name==name)&(db.auth_permission.table_name==table)).delete()
         return dict(data ='ok')
     return locals()
+#*************************Track*********************************************
+@cors_allow
+@request.restful()
+def tracking_status():
+    response.view = 'generic.' + request.extension
+    def POST(token,id):
+        resultado=db(db.bot_storage.bot_id==id).select(db.bot_storage.storage_key)
+        return dict(content =resultado)
+    return locals()
 #----------------------------------------------------------
 @cors_allow
 @request.restful()
 def password_reset():
     response.view = 'generic.' + request.extension
+    #@decora('User Profile')
     def GET(email):
         import base64
         import binascii
@@ -278,11 +431,11 @@ def password_reset():
         #generates a new random password key
         new_pswd = str(binascii.hexlify(os.urandom(3))).replace("'", "")
         #update of the password in the table
-        db(db.auth_user.email == email).update(password=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(new_pswd)[0]))
+        db(db.auth_user.email == email).update(password=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(new_pswd)[0]),temporal_password=True)
         #sending an email
         user = 'no-reply@botprotec.com'
         pswd = 'n0replyn0reply'
-        msg = MIMEText("Your password has been reset, login with the password:" + new_pswd + ". \r\nWe strongly recommend you change your password on your account settings.\r\n\r\nBotPro")
+        msg = MIMEText("Your password has been reset, login with the password:" + new_pswd + ". \r\nWe strongly recommend you change your password on your account settings, because the password provided is temporary.\r\n\r\nBotPro")
         msg['Subject'] = "BotPro Account Password Reset"
         msg['From'] = user
         msg['To'] = email
@@ -300,7 +453,8 @@ def user():
     def GET(email):
         #this function is only for verificaction of user existance
         return dict(count = db(db.auth_user.email == email).count())
-    def PUT(**vars):
+    @decora('User Manager')
+    def PUT(token,**vars):
         #imports
         import datetime
         import base64
@@ -329,7 +483,8 @@ def user():
             #password=db.auth_user.password.validate(vars['password']),
             api_token = generatedToken,
             token_datetime = current_date,
-            enabled_access='enable')
+            enabled_access='enable',
+            password_change=current_date)
         #return dict(token = db(db.auth_user.email == userData.first_name).select(db.auth_user.api_token))
         return dict(data = generatedToken)
     return locals()
@@ -338,7 +493,8 @@ def user():
 @request.restful()
 def bot_variables_records():
     response.view = 'generic.' + request.extension
-    def GET(bot_id,start_limit,end_limit):
+    @decora('Bot Data Manager')
+    def GET(token,bot_id,start_limit,end_limit):
         #getting the list of variables registered to the bot
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
@@ -358,7 +514,8 @@ def bot_variables_recordcount():
 @request.restful()
 def bot_variables():
     response.view = 'generic.' + request.extension
-    def GET(bot_id):
+    @decora('Bot Management')
+    def GET(token,bot_id):
         #getting the list of variables registered to the bot
         return dict(data = db(db.bot_storage.bot_id == bot_id).select(db.bot_storage.storage_key, distinct=True))
     return locals()
@@ -367,7 +524,8 @@ def bot_variables():
 @request.restful()
 def bot_conversations():
     response.view = 'generic.' + request.extension
-    def GET(bot_id,start_limit,end_limit):
+    @decora('Bot Chat Center')
+    def GET(token,bot_id,start_limit,end_limit):
         #getting the logged chats with a bot, delimited by a number of data
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
@@ -389,7 +547,8 @@ def bot_conversations_contact():
 @request.restful()
 def bot_conversations_recordcount():
     response.view = 'generic.' + request.extension
-    def GET(bot_id):
+    @decora('Bot Chat Center')
+    def GET(token,bot_id):
         #getting the number of logged messages that a bot has
         return dict(data = db(db.conversation.bot_id == bot_id).count())
     return locals()
@@ -432,7 +591,8 @@ def website_connector():
         db(db.website_token.token == token).update(website = website)
         return dict()
     #Delete method
-    def DELETE(**vars):
+    @decora('Bot Management')
+    def DELETE(tokens,**vars):
         #getting the parameters
         bot_id = vars['bot_id']
         token = vars['token']
@@ -478,7 +638,8 @@ def bot_register():
 @request.restful()
 def bot_intent_recordcount():
     response.view = 'generic.' + request.extension
-    def GET(bot_id):
+    @decora('Bot Intents Manager')
+    def GET(token,bot_id):
         #getting the list of variables registered to the bot
         return dict(data = db(db.bot_intent.bot_id == bot_id).count())
     return locals()
@@ -486,16 +647,19 @@ def bot_intent_recordcount():
 @request.restful()
 def bot_intents():
     response.view = 'generic.' + request.extension
-    def GET(bot_id,start_limit,end_limit):
+    @decora('Bot Intents Manager')
+    def GET(token,bot_id,start_limit,end_limit):
         #getting all the intents per bot
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
         return dict(intents = db(db.bot_intent.bot_id == bot_id).select(db.bot_intent.id, db.bot_intent.context_id, db.bot_intent.name, limitby=(v_start_limit,v_end_limit)))
-    def PUT(**vars):
+    @decora('Bot Intents Manager')
+    def PUT(token,**vars):
         #update of intent
         db(db.bot_intent.id == vars['id']).update(context_id = vars['context_id'],name = vars['name'])
         return dict(result = 'ok')
-    def POST(**vars):
+    @decora('Bot Intents Manager')
+    def POST(token,**vars):
         #insert of intent
         db.bot_intent.insert(
             bot_id = vars['bot_id'],
@@ -503,7 +667,8 @@ def bot_intents():
             name = vars['name']
         )
         return dict(result = 'ok')
-    def DELETE(**vars):
+    @decora('Bot Intents Manager')
+    def DELETE(token,**vars):
         #deletion of intent
         db(db.bot_intent.id == vars['id']).delete()
         return dict(result = 'ok')
@@ -515,7 +680,8 @@ def bot_intents():
 @request.restful()
 def intent_example_count():
     response.view = 'generic.' + request.extension
-    def GET(intent_id):
+    @decora('Bot Intents Manager')
+    def GET(token,intent_id):
         #getting the list of variables registered to the bot
         return dict(data = db(db.intent_context_example.intent_id == intent_id).count())
     return locals()
@@ -523,42 +689,46 @@ def intent_example_count():
 @request.restful()
 def intent_example():
     response.view = 'generic.' + request.extension
-    def GET(intent_id,start_limit,end_limit):
+    @decora('Bot Intents Manager')
+    def GET(token,intent_id,start_limit,end_limit):
         #getting all the intents per bot
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
         return dict(examples = db(db.intent_context_example.intent_id == intent_id).select(db.intent_context_example.id, db.intent_context_example.intent_id, db.intent_context_example.example_text, limitby=(v_start_limit,v_end_limit)))
-    def PUT(**vars):
+    @decora('Bot Intents Manager')
+    def PUT(token,**vars):
         #update of intent
         db(db.intent_context_example.id == vars['id']).update(example_text = vars['example_text'], intent_id = vars['intent_id'])
         return dict(result = 'ok')
-    def POST(**vars):
+    @decora('Bot Intents Manager')
+    def POST(token,**vars):
         #insert of intent
         db.intent_context_example.insert(
             intent_id = vars['intent_id'],
             example_text = vars['example_text']
         )
         return dict(result = 'ok')
-    def DELETE(**vars):
+    @decora('Bot Intents Manager')
+    def DELETE(token,**vars):
         #deletion of intent
         db(db.intent_context_example.id == vars['id']).delete()
         return dict(result = 'ok')
     return locals()
 #-----------------------
-
 @cors_allow
 @request.restful()
 def bot_ai():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('Bot Intents Manager')
+    def POST(token,**vars):
         #creates the file for the ai engine
-        '''import os
+        import os
         bot_id = vars['bot_id']
         input_stream = vars['file_content']
         myfile = os.path.join('/home/rasa/rasa_nlu/data/examples/rasa/', 'Project_' + str(bot_id) + ".json")
         f = open(myfile,'w')
         f.write(input_stream)
-        f.close()'''
+        f.close()
         return dict(result = 'ok')
     return locals()
 #-------------------------
@@ -566,7 +736,8 @@ def bot_ai():
 @request.restful()
 def bot_ai_config():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('Bot Intents Manager')
+    def POST(token,**vars):
         def excute(cmd,fileName, overwrite = False):
             import subprocess
             p = subprocess.Popen(cmd, shell=True, stderr=subprocess.PIPE)
@@ -622,24 +793,24 @@ def bot_ai_config():
         excute('sudo systemctl restart rasa',
                'Train_%s.log' % (bot_id))
         import time
-        time.sleep(10) #Wait for rasa to restart
+        time.sleep(10)        #Wait for rasa to restart
         return dict(result = 'ok')
     return locals()
-#-------------------------
-
+#--------------API----------------------
 @cors_allow
 @request.restful()
 def api():
     response.view = 'generic.' + request.extension
-    def GET(*args, **vars):
+    @decora('Bot Management')
+    def GET(token,*args,**vars):
         patterns = 'auto'
         parser = db.parse_as_rest(patterns, args, vars)
         if parser.status == 200:
-            return dict(content=parser.response)
+            return dict(content=parser.response)#dict(content=("hola token:"+args[0]+" "+token))#
         else:
             raise HTTP(parser.status, parser.error)
-
-    def POST(table_name, **vars):
+    @decora('Bot Management')
+    def POST(token,table_name, **vars):
         import json
         for key in vars.keys():
             if db[table_name][key].type == 'json':
@@ -656,7 +827,8 @@ def api():
         else:
             raise HTTP(parser.status, parser.error)
         #return dict(content = db(db[table_name]._id == result.id).select(), errors = result.errors)
-    def PUT(table_name,record_id,**vars):
+    @decora('Bot Management')
+    def PUT(token,table_name,record_id,**vars):
         import json
         for key in vars.keys():
             if db[table_name][key].type == 'json':
@@ -669,20 +841,23 @@ def api():
             return dict(content=parser.response)
         else:
             raise HTTP(parser.status, parser.error)
-    def DELETE(table_name,record_id,**vars):
+    @decora('Bot Management')
+    def DELETE(token,table_name,record_id,**vars):
         if table_name != "bot":
             raise HTTP(405,"METHOD NOT ALLOWED")
         import json
         r = db(db[table_name]._id==record_id).delete()
         return dict(content=r)
-        #return dict(content = db(db[table_name]._id == record_id).select())
+        #return dict(content=token)
+        ##return dict(content = db(db[table_name]._id == record_id).select())
     return locals()
 
 @cors_allow
 @request.restful()
 def deleteContext():
     response.view = 'generic.' + request.extension
-    def GET(context_id):
+    @decora('Bot Management')
+    def GET(token,context_id):
         def tryRecursiveDelete(contextid):
             context_childs=db(db.bot_context.parent_context==contextid).select(db.bot_context.id,db.bot_context.name)
             for child in context_childs:
@@ -720,7 +895,8 @@ def deleteContext():
 def changeContextName():
     import json
     response.view = 'generic.' + request.extension
-    def GET(context_id,newName):
+    @decora('Bot Management')
+    def GET(token,context_id,newName):
         respuesta=''
         contexts=db(db.bot_context.id==context_id).select(db.bot_context.name, db.bot_context.context_json)
         for context in contexts:
@@ -734,15 +910,25 @@ def changeContextName():
 def existsContextName():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid,name):
+    @decora('Bot Management')
+    def GET(token,botid,name):
         return dict(cont=db((db.bot_context.bot_id==botid)&(db.bot_context.name==name)).count())
     return locals()
+
+def decorador1(f):
+    def inner(*args):
+        token=args[0]
+            #------------------------------
+        return dict(cont=("valor: "+token))
+            #----------------------------
+    return inner
 @cors_allow
 @request.restful()
 def existsIntentName():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid,name):
+    @decora('Bot Intents Manager')
+    def GET(token,botid,name):
         return dict(cont=db((db.bot_intent.bot_id==botid)&(db.bot_intent.name==name)).count())
     return locals()
 @cors_allow
@@ -782,7 +968,8 @@ def deleteTelegramConnector():
 def getBotTrainStatus():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid):
+    @decora('Bot Management')
+    def GET(token,botid):
         respuesta=db(db.bot.id==botid).select(db.bot.ai_configured)
         return dict(cont=respuesta[0].ai_configured)
     return locals()
@@ -791,7 +978,8 @@ def getBotTrainStatus():
 def setBotTrainStatus():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid):
+    @decora('Bot Intents Manager')
+    def GET(token,botid):
         respuesta=''
         import requests
         params = (('q', 'hola'),('project', 'Project_'+ str(botid)))
@@ -809,7 +997,8 @@ def setBotTrainStatus():
 def setFalseBotTrainStatus():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid):
+    @decora('Bot Intents Manager')
+    def GET(token,botid):
         respuesta='ok'
         db(db.bot.id==botid).update(ai_configured=False)
         return dict(cont=respuesta)
@@ -819,7 +1008,8 @@ def setFalseBotTrainStatus():
 def getTrainLog():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid):
+    @decora('Bot Intents Manager')
+    def GET(token,botid):
         respuesta='ok'
         try:
             fi=open('/home/rasa/rasa_nlu/sample_configs/Train_'+botid+'.log','r')
@@ -868,7 +1058,8 @@ def sendMessageToMessegerg():
 def sendMessageToTelegramg():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId,clientId,message):
+    @decora('Bot Chat Center')
+    def GET(token,botId,clientId,message):
         def log_conversation(chat_id, chat_text, bot, type,content_type):
                 msg_origin = 'client'
                 if (type == 'sent'):
@@ -903,7 +1094,8 @@ def sendMessageToTelegramg():
 @request.restful()
 def sendMessageToMesseger():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('Bot Chat Center')
+    def POST(token,**vars):
         #creates the file for the ai engine
         botId = vars['bot_id']
         message = vars['message']
@@ -986,7 +1178,8 @@ def sendMessageToTelegram():
 def endChatCenter():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId,clientId):
+    @decora('Bot Chat Center')
+    def GET(token,botId,clientId):
         def log_conversation(chat_id, chat_text, bot, type,content_type):
                 msg_origin = 'client'
                 if (type == 'sent'):
@@ -1013,7 +1206,8 @@ def endChatCenter():
 def checkNeedChatCenter():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId):
+    @decora('Bot Chat Center')
+    def GET(token,botId):
         respuesta =[]
         resp=db(db.conversation.bot_id==botId)
         needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner, distinct=True)
@@ -1028,7 +1222,8 @@ def checkNeedChatCenter():
 def getAiRequests():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId):
+    @decora('Bot Intents Manager')
+    def GET(token,botId):
         respuesta =[]
         resp=db(db.ai_request.bot_id==botId)
         requests=resp.select(db.ai_request.status,
@@ -1053,7 +1248,8 @@ def getAiRequests():
 @request.restful()
 def sendMessageToBroadcast():
     response.view = 'generic.' + request.extension
-    def POST(**vars):
+    @decora('Bot Chat Center')
+    def POST(token,**vars):
         #creates the file for the ai engine
         botId = vars['bot_id']
         message = vars['message']
@@ -1112,10 +1308,29 @@ def sendMessageToBroadcast():
 #-------------------------
 @cors_allow
 @request.restful()
+def getTracking():
+    import json
+    response.view = 'generic.' + request.extension
+    def GET(token, botId, start , end):
+        messenger_Total=-1
+        messenger_clients=-1
+        fechamin = db.conversation.message_date.min().with_alias('fecha')
+        horamin=db.conversation.message_time.min().with_alias('hora')
+        row = db(db.conversation.bot_id==botId).select(fechamin,horamin)
+        #---------------------------------------------------------------------------------------------------
+        messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')
+                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))
+        return dict(clients=messenger_clients,fechas=row)
+    return locals()
+
+#------------------------------------------------
+@cors_allow
+@request.restful()
 def getStatistics():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId, start , end):
+    @decora('Bot Statistics')
+    def GET(token,botId, start , end):
         telegram_Total=-1
         messenger_Total=-1
         website_Total=-1
@@ -1183,7 +1398,8 @@ def getStatistics():
 def botClone():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botId,name,full):
+    @decora('Bot Management')
+    def GET(token,botId,name,full):
         respss=''
         cnt=[]
         r=db(db.bot.id==botId).select(db.bot.bot_language,db.bot.picture)
@@ -1213,6 +1429,7 @@ def botClone():
                 caddena=caddena.replace(str(s['old']), str(s['new']))
             db((db.bot_context.bot_id==newBotId)&(db.bot_context.id==c['new'])).update(context_json=eval(caddena))
         return dict(cont=(r),cn=contexts,inte=intents,act=cnt,newbot=newBotId,status=respss)
+        #return dict(cont=token)
     return locals()
 @cors_allow
 @request.restful()

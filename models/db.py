@@ -57,7 +57,9 @@ auth = Auth(db)
 auth.settings.extra_fields['auth_user']= [
   Field('api_token', 'string'),
   Field('token_datetime', 'datetime'),
-  Field('enabled_access', 'string',default='enable')]
+  Field('enabled_access', 'string',default='enable'),
+  Field('temporal_password', 'boolean',default=True),
+  Field('password_change', 'date')]
 auth.settings.extra_fields['auth_group']= [
   Field('access_role', 'string',default='enable')]
 service = Service()
@@ -99,6 +101,15 @@ db.define_table('contact',
                Field('lastName', 'string'),
                Field('email', 'string'),
                Field('phoneNumber', 'string'))
+db.define_table('auth_feature',
+               Field('feature_name', 'string'))
+db.define_table('auth_functionality',
+               Field('feature_id', 'reference auth_feature'),
+               Field('role_id','reference auth_group'))
+db.define_table('auth_policies',
+               Field('policies_name', 'string'),
+               Field('policies_active','boolean',default=False),
+               Field('date_end', 'integer'))
 import os
 db.define_table('bot',
                 Field('name','string'),
