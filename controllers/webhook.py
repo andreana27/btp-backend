@@ -1,6 +1,6 @@
 #*************
 # -*- coding: utf-8 -*-*****
-# intente algo como
+# ------------------------------------------------------------
 @cors_allow
 @request.restful()
 def hook():
@@ -700,11 +700,13 @@ def hook():
                 import os
                 chat_id = entry['messaging'][0]['sender']['id']
                 #debug(chat_id,'entrada0: %s'%(chat_id),bot)
-                content_type = 'text'
+                #content_type = 'text'
                 #if entry['messaging'][0].get('message'):
+                content_type = 'text'
+                debug(chat_id,'Message: -- %s' % (request.vars), bot)
                 if ('text' in entry['messaging'][0]['message']):
                     chat_text = entry['messaging'][0]['message']['text']
-                        #debug(chat_id,'entrada1: %s'%(chat_text),bot)
+                    #debug(chat_id,'entrada1: %s'%(chat_text),bot)
                 else:
                     chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
                     #debug(chat_id,'entrada2: %s'%(chat_text),bot)
@@ -712,8 +714,6 @@ def hook():
                 #else:
                 #    chat_text = 'Empezar'
                     #ad_ref = entry['messaging'][0]['referral']['ref']
-                #referal=entry['messaging']
-                debug(chat_id,'Message: -- %s' % (request.vars), bot)
                 debug(chat_id,
                       'Facebook Message: "%s"' % (json.dumps(entry)), bot)
                 if chat_text:

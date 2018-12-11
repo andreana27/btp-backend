@@ -19,7 +19,6 @@ def upload():
 @cors_allow
 @request.restful()
 def bot_conversation_users():
-    from json import JSONEncoder
 
     def GET(bot_id):
         users = set()
@@ -29,6 +28,20 @@ def bot_conversation_users():
         return response.json(users)
 
     return locals()
+
+@cors_allow
+@request.restful()
+def bot_variables_list():
+
+    def GET(bot_id):
+        variables = set()
+        for variable in db(db.bot_storage.bot_id == bot_id).select():
+            variables.add(variable.storage_key)
+
+        return response.json(variables)
+
+    return locals()
+
 @cors_allow
 @cache.action()
 def download():
