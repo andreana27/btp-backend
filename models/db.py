@@ -206,5 +206,12 @@ db.define_table('bot_phantom_context',
                 Field('name', 'string'),
                 Field('flow_position', 'string'),
                 Field('context_json', 'json'))
+
+db.define_table('broadcast_rules_group',
+               Field('bot_id', 'reference bot'),
+               Field('name', 'string'),
+               Field('action_type', 'string'),
+               Field('action_value', 'string'),
+               Field('rules', 'json'))
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)

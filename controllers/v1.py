@@ -30,19 +30,6 @@ def bot_conversation_users():
     return locals()
 
 @cors_allow
-@request.restful()
-def bot_variables_list():
-
-    def GET(bot_id):
-        variables = set()
-        for variable in db(db.bot_storage.bot_id == bot_id).select():
-            variables.add(variable.storage_key)
-
-        return response.json(variables)
-
-    return locals()
-
-@cors_allow
 @cache.action()
 def download():
     """
@@ -1475,4 +1462,48 @@ def apiPhantomContext():
         name=vars['name']
         db.bot_phantom_context.insert(bot_id = botId,storage_owner = clientId,context_json = (h),name=name,flow_position=0)
         return dict(context= str(h),cliente=clientId,bot=botId)
+    return locals()
+
+
+@cors_allow
+@request.restful()
+def bot_variables_list():
+
+    def GET(bot_id):
+        variables = set()
+        for variable in db(db.bot_storage.bot_id == bot_id).select():
+            variables.add(variable.storage_key)
+
+        return response.json(variables)
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def broadcast():
+    def GET(**vars):
+        if request.get_vars['bot_id']:
+            broadcasts = db(db.broadcast_rules_group.bot_id == request.get_vars['bot_id']).select(
+                db.broadcast_rules_group.id,
+                db.broadcast_rules_group.name
+            )
+            return response.json(broadcasts)
+
+        if request.get_vars['id']:
+            broadcast = db(db.broadcast_rules_group.id == request.get_vars['id']).select()
+            if broadcast:
+                return response.json(broadcast.first())
+
+            return response.json({'error': 'Broadcast with id {} not exists'.format(request.get_vars['id'])})
+
+    def POST(**vars):
+        try:
+            response_value = db.broadcast_rules_group.insert(**{'name': request.post_vars['name'], 'bot_id': request.post_vars['bot_id']})
+            if response_value:
+                created_broadcast = db(db.broadcast_rules_group.id == response_value).select().first()
+                return response.json({'status': 'created', 'data': created_broadcast})
+            else:
+                return response.json({'status': 'error', 'error': 'not created'})
+        except:
+            return response.json({'status': 'error', 'error': 'not created'})
     return locals()
