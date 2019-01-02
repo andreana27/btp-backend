@@ -67,6 +67,17 @@ def authk():
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
+#------------------------------------------
+@cors_allow
+@request.restful()
+def user_filters():
+    response.view = 'generic.' + request.extension
+    #@decora('')
+    def GET(token,id,name):
+        search=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_value.like('%'+name+'%', case_sensitive=False))&(db.bot_storage.storage_key=='fb_username')).select(db.bot_storage.storage_owner,db.bot_storage.storage_value,distinct=True)
+        return dict(data=search)
+    return locals()
+
 #-----------decoradores---------------
 def decora(valor):
     def decorador_put(f):
@@ -1480,23 +1491,36 @@ def bot_variables_list():
 
 @cors_allow
 @request.restful()
-def broadcast():
-    def GET(**vars):
-        if request.get_vars['bot_id']:
-            broadcasts = db(db.broadcast_rules_group.bot_id == request.get_vars['bot_id']).select(
-                db.broadcast_rules_group.id,
-                db.broadcast_rules_group.name
-            )
-            return response.json(broadcasts)
+def variables():
 
-        if request.get_vars['id']:
-            broadcast = db(db.broadcast_rules_group.id == request.get_vars['id']).select()
+    @decora('Segments')
+    def GET(token):
+        try:
+            variables = set()
+            for variable in db(db.bot_storage).select():
+                variables.add(variable.storage_key)
+
+            return response.json({'status': 'selected', 'data': variables})
+        except:
+            return response.json({'status': 'error', 'data': 'not founded variables'})
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def broadcast():
+    @decora('Segments')
+    def GET(token, broadcast_id):
+        if broadcast_id:
+            broadcast = db(db.broadcasts.id == broadcast_id).select()
             if broadcast:
                 return response.json(broadcast.first())
 
-            return response.json({'error': 'Broadcast with id {} not exists'.format(request.get_vars['id'])})
+            return response.json({'error': 'Broadcast with id {} not exists'.format(broadcast_id)})
 
-    def POST(**vars):
+    @decora('Segments')
+    def POST(token, **vars):
+
         try:
             response_value = db.broadcast_rules_group.insert(**{'name': request.post_vars['name'], 'bot_id': request.post_vars['bot_id']})
             if response_value:
@@ -1506,4 +1530,331 @@ def broadcast():
                 return response.json({'status': 'error', 'error': 'not created'})
         except:
             return response.json({'status': 'error', 'error': 'not created'})
+
+    @decora('Segments')
+    def PUT(token, **vars):
+
+        try:
+            response_evaluator = db(
+                db.broadcast_rules_group.id==int(vars['id']),
+            ).update(
+                **vars
+            )
+            if response_evaluator:
+                response_value = db(db.broadcast_rules_group.id == vars['id']).select().first()
+                return response.json({'status': 'updated', 'data': response_value})
+            else:
+                return response.json({'status': 'error', 'error': 'not updated'})
+        except:
+            return response.json({'status': 'error', 'error': 'not updated'})
+
+    @decora('Segments')
+    def DELETE(token, **vars):
+
+        response_evaluator = db(
+            db.broadcast_rules_group.id==int(vars['id']),
+        ).delete()
+
+        if response_evaluator:
+            return response.json({'status': 'deleted', 'data': vars})
+        else:
+            return response.json({'status': 'error', 'error': 'not deleted'})
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def segments():
+
+    @decora('Segments')
+    def GET(token, **vars):
+
+        segments = db(db.segments).select()
+        return response.json({'status': 'selected', 'data': segments})
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def broadcasts():
+
+    @decora('Segments')
+    def GET(token):
+        broadcasts = db(db.broadcasts).select()
+        return response.json({'status': 'selected', 'data': broadcasts})
+
+    @decora('Segments')
+    def POST(token, **vars):
+
+        try:
+            import datetime
+            date_to_save = datetime.datetime.now()
+            vars['created_at'] = date_to_save
+            vars['updated_at'] = date_to_save
+            vars['name'] = 'broadcast-' + str(date_to_save)
+            vars['info'] = [
+                {
+                    'label': 'broadcast with name {} was created'.format(vars['name']),
+                    'date': date_to_save,
+                    'message': ""
+                }
+            ]
+            response_value = db.broadcasts.insert(**vars)
+            if response_value:
+                created_broadcast = db(db.broadcasts.id == response_value).select().first()
+                return response.json({'status': 'created', 'data': created_broadcast})
+            else:
+                return response.json({'status': 'error', 'error': 'not created'})
+        except:
+            return response.json({'status': 'error', 'error': 'not created'})
+
+    return locals()
+
+#bots custom service
+@cors_allow
+@request.restful()
+def bots():
+    @decora('Segments')
+    def GET(token, **vars):
+
+        if(vars['segment_id']):
+            segments = db(db.segments.id == vars['segment_id']).select()
+            if segments:
+                segment = segments.first()
+                comparation = segment.comparation
+                variables = set()
+                bots = []
+                bots_ids = set()
+                #get segment variables name
+                for filter in segment.filters:
+                    variables.add(filter['variable'])
+
+                for variable in variables:
+                    for bot in db(db.bot_storage.storage_key == variable).select(db.bot_storage.bot_id):
+                        bots_ids.add(bot.bot_id)
+                #get bot info with bots ids
+                try:
+                    if int(vars['bot_id']):
+                        bots_ids = [int(vars['bot_id'])]
+                        for bot in bots_ids:
+                            bot_to_insert = db(db.bot.id == bot).select(db.bot.id, db.bot.name).first()
+                            bots.append(bot_to_insert)
+                    else:
+                        for bot in bots_ids:
+                            bot_to_insert = db(db.bot.id == bot.id).select(db.bot.id, db.bot.name).first()
+                            bots.append(bot_to_insert)
+                except:
+                    for bot in bots_ids:
+                        bot_to_insert = db(db.bot.id == bot.id).select(db.bot.id, db.bot.name).first()
+                        bots.append(bot_to_insert)
+                #bot operations
+                for bot in bots:
+                    bot.variables = []
+                    bot.users = []
+                    bot.qualified_users = []
+                    users_ids = []
+                    users_pivot = []
+                    #get bot individual variables
+                    for register in db(db.bot_storage.bot_id == bot.id).select():
+                        if register.storage_key in variables:
+                            bot.variables.append(register.storage_key)
+                            users_ids.append(register.storage_owner)
+                    #set bot variables to use
+                    bot.variables = list(set(bot.variables))
+                    #set bot user id to use
+                    users_ids = list(set(users_ids))
+                    #change to user object
+                    for user in users_ids:
+                        user = {'id': user}
+                        users_pivot.append(user)
+                    #user objects need data
+                    for user in users_pivot:
+                        responses = []
+                        #get response with segment variables
+                        for resp in db(
+                            (db.bot_storage.bot_id == bot.id) &
+                            (db.bot_storage.storage_owner == user['id'])
+                        ).select(db.bot_storage.storage_key, db.bot_storage.storage_value):
+                            if resp.storage_key in variables:
+                                if segment.comparation == 'AND':
+                                    resp['status'] = True
+                                elif segment.comparation == 'OR':
+                                    resp['status'] = False
+                                responses.append(resp)
+                        user['responses'] = responses
+                        user['qualified'] = None
+                    bot.users = users_pivot
+
+                if segment.comparation == 'AND':
+                    for bot in bots:
+                        if len(bot.variables) < len(variables):
+                            del bots[bots.index(bot)]
+
+                for bot in bots:
+                    for user in bot.users:
+                        fake_user = user
+                        fake_user['filters'] = []
+                        if segment.comparation == 'AND':
+                            use_filters = segment.filters
+                        elif segment.comparation == 'OR':
+                            use_filters = []
+                            for filter in segment.filters:
+                                if filter['variable'] in bot['variables']:
+                                    use_filters.append(filter)
+                        for filter in use_filters:
+                            user_response = next(item for item in user['responses'] if item['storage_key'] == filter['variable'])
+                            comparation = {'filter_value': None, 'user_value': None, 'filter_comparation': filter['comparation'], 'status': False}
+
+                            if filter['type'] == 'date':
+                                from datetime import datetime
+                                comparation['user_value'] = datetime.strptime(user_response['storage_value'],  "%d/%m/%Y")
+                                comparation['filter_value'] = datetime.strptime(filter['value'],  "%Y-%m-%d")
+                            elif filter['type'] == 'numeric':
+                                comparation['user_value'] = int(user_response['storage_value'])
+                                comparation['filter_value'] = int(filter['value'])
+                            else:
+                                comparation['user_value'] = user_response['storage_value']
+                                comparation['filter_value'] = filter['value']
+
+                            if filter['comparation'] == 'equals':
+                                if comparation['user_value'] == comparation['filter_value']:
+                                    comparation['status'] = True
+                            if filter['comparation'] == 'not-equals':
+                                if comparation['user_value'] != comparation['filter_value']:
+                                    comparation['status'] = True
+
+                            if (filter['comparation'] == 'greater-than') | (filter['comparation'] == 'after'):
+                                if comparation['user_value'] > comparation['filter_value']:
+                                    comparation['status'] = True
+                            if (filter['comparation'] == 'smaller-than') | (filter['comparation'] == 'before'):
+                                if comparation['user_value'] < comparation['filter_value']:
+                                    comparation['status'] = True
+
+                            if segment.comparation == 'AND':
+                                if not comparation['status']:
+                                    response_index = user['responses'].index(user_response)
+                                    user['responses'][response_index]['status'] = False
+
+                            elif segment.comparation == 'OR':
+                                if comparation['status']:
+                                    response_index = user['responses'].index(user_response)
+                                    user['responses'][response_index]['status'] = True
+
+                            fake_user['filters'].append(comparation)
+
+                    if segment.comparation == 'OR':
+                        for user in bot.users:
+                            user['qualified'] = False
+                            limit = len(user['responses']) - 1
+                            position = 0
+                            while True:
+                                result = user['responses'][position]['status']
+                                position = position + 1
+                                if(result):
+                                    user['qualified'] = True
+                                    break
+                                if position > limit:
+                                    break
+
+                            if user['qualified']:
+                                bot.qualified_users.append(user)
+
+                    if segment.comparation == 'AND':
+                        for user in bot.users:
+                            user['qualified'] = True
+                            limit = len(user['responses']) - 1
+                            position = 0
+                            while True:
+                                result = user['responses'][position]['status']
+                                position = position + 1
+                                if not result:
+                                    user['qualified'] = False
+                                    break
+                                if position > limit:
+                                    break
+
+                            if user['qualified']:
+                                bot.qualified_users.append(user)
+
+                    try:
+                        if vars['show_users']:
+                            bot['users_count'] = len(bot['users'])
+                            bot['qualified_users_count'] = len(bot['qualified_users'])
+                            if(vars['show_users'] != 'true'):
+                                del bot['users']
+                                del bot['qualified_users']
+                            else:
+                                del bot['users']
+                    except:
+                        bot['users_count'] = len(bot['users'])
+                        bot['qualified_users_count'] = len(bot['qualified_users'])
+                        del bot['users']
+                        del bot['qualified_users']
+
+                return response.json({'status': 'founded', 'data': bots})
+            else:
+                return response.json({'status': 'error', 'error': 'not founded'})
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def segment():
+
+    @decora('Segments')
+    def GET(token, segment_id):
+        segment = db(db.segments.id == segment_id).select()
+        if segment:
+            return response.json({'status': 'selected', 'data': segment.first()})
+
+        return response.json({'status': 'error', 'error': 'not founded'})
+
+    @decora('Segments')
+    def POST(token, **vars):
+
+        try:
+            import datetime
+            date_to_save = datetime.datetime.now()
+            vars['created_at'] = date_to_save
+            vars['updated_at'] = date_to_save
+            response_value = db.segments.insert(**vars)
+            if response_value:
+                created_segment = db(db.segments.id == response_value).select().first()
+                return response.json({'status': 'created', 'data': created_segment})
+            else:
+                return response.json({'status': 'error', 'error': 'not created'})
+        except:
+            return response.json({'status': 'error', 'error': 'not created'})
+
+    @decora('Segments')
+    def PUT(token, **vars):
+
+        try:
+            import datetime
+            vars['updated_at'] = datetime.datetime.now()
+            response_evaluator = db(
+                db.segments.id==int(vars['id']),
+            ).update(
+                **vars
+            )
+            if response_evaluator:
+                response_value = db(db.segments.id == vars['id']).select().first()
+                return response.json({'status': 'updated', 'data': response_value})
+            else:
+                return response.json({'status': 'error', 'error': 'not updated'})
+        except:
+            return response.json({'status': 'error', 'error': 'not updated'})
+
+    @decora('Segments')
+    def DELETE(token, **vars):
+
+        response_evaluator = db(
+            db.segments.id==int(vars['id']),
+        ).delete()
+
+        if response_evaluator:
+            return response.json({'status': 'deleted', 'data': vars})
+        else:
+            return response.json({'status': 'error', 'error': 'not deleted'})
+
     return locals()

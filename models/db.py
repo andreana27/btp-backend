@@ -213,5 +213,27 @@ db.define_table('broadcast_rules_group',
                Field('action_type', 'string'),
                Field('action_value', 'string'),
                Field('rules', 'json'))
+
+db.define_table('segments',
+                Field('name', 'string'),
+                Field('filters', 'json', default = None),
+                Field('comparation', 'string', default = 'AND'),
+                Field('created_at', 'datetime'),
+                Field('updated_at', 'datetime')
+               )
+
+db.define_table('broadcasts',
+               Field('bot_id', 'reference bot'),
+               Field('segments_id', 'reference segments'),
+               Field('name', 'string'),
+               Field('alias_name', 'string'),
+               Field('action_type', 'string'),
+               Field('action_value', 'string'),
+               Field('created_at', 'datetime'),
+               Field('updated_at', 'datetime'),
+               Field('status', 'string', default = 'draft'),
+               Field('info', 'json')
+               )
+
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
