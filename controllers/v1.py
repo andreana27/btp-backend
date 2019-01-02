@@ -129,13 +129,27 @@ def feature_decorador():
 @cors_allow
 @request.restful()
 def feedapi():
+    response.view = 'generic.' + request.extension
     def POST(token,botid,owner,var,value):
         save_data=db.bot_storage.insert(bot_id=botid,storage_owner=owner,storage_key=var,storage_value=value)
         return dict(result=save_data)
     return locals()
-#------Users update 29/10/2018--------
+
 @cors_allow
 @request.restful()
+def qualificationkey():
+    response.view = 'generic.' + request.extension
+    def GET(key,namekey,key_update,namekey_update):
+        get_owner=db((db.bot_storage.storage_key == key)&(db.bot_storage.storage_value==namekey)).select(db.bot_storage.storage_owner)
+        if get_owner:
+            resultado=1
+            for owner in get_owner:
+                storage_update=db((db.bot_storage.storage_owner==owner.storage_owner)&(db.bot_storage.storage_key==key_update)).update(storage_key=key_update,storage_value = nameKey_update)
+        else:
+            resultado=0
+        return dic(data=resultado)
+    return locals()
+#------Users update 29/10/2018--------
 def count_users():
     response.view = 'generic.' + request.extension
     #@decorator_back_('User Manager')
