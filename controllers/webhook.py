@@ -1,6 +1,6 @@
 #*************
 # -*- coding: utf-8 -*-*****
-# intente algo como
+# ------------------------------------------------------------
 @cors_allow
 @request.restful()
 def hook():
@@ -99,7 +99,7 @@ def hook():
                 else:
                     user_current_context = db((db.bot_context.id) == int(user_current_context.storage_value)).select().first()
                 #RETURN CURRENT CONTEXT
-                debug(chat_id, "c context: {}".format(str(user_current_context)), bot)
+                #debug(chat_id, "c context: {}".format(str(user_current_context)), bot)
                 return user_current_context
 
             #method to return if captcha intents exist
@@ -403,9 +403,13 @@ def hook():
 
                 item_id = 'count_validation_{}'.format(flow_item['id'])
                 item_intents = flow_item['limit']
-                item_users_excluded = flow_item['users']
+                item_users = flow_item['users']
+                item_users_excluded = []
                 item_send_to = flow_item['sendTo']
                 message = flow_item['message']
+
+                for item_user in item_users:
+                    item_users_excluded.append(item_user[0])
 
                 check_intents = db(
                     (db.bot_internal_storage.storage_owner == chat_id) &
@@ -513,7 +517,12 @@ def hook():
                 import json
                 return r(result)
             def smarText(chat_id, flow_item, bot, **vars):
+                debug(chat_id,'inciio bloque ST',bot)
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
+                try:
+                    db(db.bot_context_heap.bot_id ==bot.id).delete()
+                except:
+                    pass
                 return r(dict(recipient = dict(id = chat_id),
                               message = dict(text = flow_item['content'])))
             def smartReply(chat_id, flow_item, bot, **vars):
@@ -534,10 +543,14 @@ def hook():
                                                          bot_id = bot.id,
                                                          storage_key = 'send_to',
                                                          storage_value = ','.join(send_to))
+                try:
+                    db(db.bot_context_heap.bot_id ==bot.id).delete()
+                except:
+                    pass
                 return r(dict(recipient = dict(id = chat_id),
                               message = dict(text = flow_item['content'],
                                              quick_replies = qr)))
-            def quick_reply(chat_id, flow_item, bot, **vars):
+            def quick_reply(chat_id,flow_item, bot, **vars):
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 qr = []
                 send_to = []
@@ -693,27 +706,147 @@ def hook():
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json
             json_envelope = json.dumps(request.vars)
-
             #debug(chat_id,'entrada0: %s'%(request.vars['entry']),bot)
             for entry in request.vars['entry']:
                 import json
                 import os
                 chat_id = entry['messaging'][0]['sender']['id']
-                #debug(chat_id,'entrada0: %s'%(chat_id),bot)
+                #----------------------------------------------------
                 content_type = 'text'
-                #if entry['messaging'][0].get('message'):
-                if ('text' in entry['messaging'][0]['message']):
-                    chat_text = entry['messaging'][0]['message']['text']
+                #flujo normal
+                if entry['messaging'][0].get('message'):
+                    #---------------------------------------------------------------------------------
+                    req = requests.get('https://graph.facebook.com/'+chat_id+'?fields=name,first_name,last_name,profile_pic&access_token='+conn['token'])
+                    jsonstring = req.json()
+                    username_fb=jsonstring['name']
+                    first_name=jsonstring['first_name']
+                    last_name=jsonstring['last_name']
+                    profile_pic=jsonstring['profile_pic']
+                    try:
+                        db.bot_storage.insert(storage_owner = chat_id,
+                                              bot_id = bot.id,
+                                              storage_key='fb_username',
+                                              storage_value=username_fb)
+                        db.commit()
+                        db.bot_storage.insert(storage_owner = chat_id,
+                                              bot_id = bot.id,
+                                              storage_key='fb_profile_pic',
+                                              storage_value=profile_pic)
+                        db.commit()
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                                 (db.bot_internal_storage.bot_id == bot.id),
+                                                                 storage_owner = chat_id,
+                                                                 bot_id = bot.id,
+                                                                 first_contact=datetime.datetime.now(),
+                                                                 fbuser_name=username_fb,
+                                                                 first_namefb=first_name,
+                                                                 last_namefb=last_name)
+                    except:
+                        pass
+                    #---------------------------------------------------------------------------------
+                    if ('text' in entry['messaging'][0]['message']):
+                        chat_text = entry['messaging'][0]['message']['text']
                         #debug(chat_id,'entrada1: %s'%(chat_text),bot)
+                    else:
+                        chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
+                        content_type = 'attachment'
                 else:
-                    chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
-                    #debug(chat_id,'entrada2: %s'%(chat_text),bot)
-                    content_type = 'attachment'
-                #else:
-                #    chat_text = 'Empezar'
-                    #ad_ref = entry['messaging'][0]['referral']['ref']
-                #referal=entry['messaging']
-                debug(chat_id,'Message: -- %s' % (request.vars), bot)
+                    #flujo con messaging_referral----------
+                    import datetime
+                    import requests
+                    current_date = datetime.datetime.now()
+                    id_user=entry['messaging'][0]['sender']['id']
+                    token_bot=conn['token']
+                    #-------send id_user a fb--------------------------------------------------
+                    req = requests.get('https://graph.facebook.com/'+id_user+'?fields=name,first_name,last_name,profile_pic&access_token='+token_bot)
+                    jsonstring = req.json()
+                    username_fb=jsonstring['name']
+                    first_name=jsonstring['first_name']
+                    last_name=jsonstring['last_name']
+                    profile_pic=jsonstring['profile_pic']
+                    try:
+                        db.bot_storage.insert(storage_owner = chat_id,
+                                              bot_id = bot.id,
+                                              storage_key='fb_username',
+                                              storage_value=username_fb)
+                        db.commit()
+                        db.bot_storage.insert(storage_owner = chat_id,
+                                              bot_id = bot.id,
+                                              storage_key='fb_profile_pic',
+                                              storage_value=profile_pic)
+                    except:
+                        pass
+                    #----------------------------------------------------------------------------------
+                    if entry['messaging'][0]['postback'].get('referral'):
+                        #1 es un anuncio
+                        import datetime
+                        if entry['messaging'][0]['postback']['referral'].get('ad_id'):
+                            ads=entry['messaging'][0]['postback']['referral']['ad_id']
+                            reference=entry['messaging'][0]['postback']['referral']['ref']
+                            source=entry['messaging'][0]['postback']['referral']['source']
+                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id),
+                                                             storage_owner = chat_id,
+                                                             bot_id = bot.id,
+                                                             channel_id=reference,
+                                                             source_type=source,
+                                                             ad_id=ads,
+                                                             first_contact=datetime.datetime.now(),
+                                                             fbuser_name=username_fb,
+                                                             first_namefb=first_name,
+                                                             last_namefb=last_name)
+                            db.commit()
+                        else:
+                            debug(chat_id,'entro al else',bot)
+                            #2 es m.me/codigo de fb/plugin chat
+                            if entry['messaging'][0]['postback']['referral'].get('ref') and entry['messaging'][0]['postback']['referral'].get('source'):
+                                import datetime
+                                reference=entry['messaging'][0]['postback']['referral']['ref']
+                                source=entry['messaging'][0]['postback']['referral']['source']
+                                debug(chat_id,'Else    ref:-- %s source:-- %s'%(reference,source),bot)
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id),
+                                                             storage_owner = chat_id,
+                                                             bot_id = bot.id,
+                                                             channel_id=reference,
+                                                             source_type=source,
+                                                             first_contact=datetime.datetime.now(),
+                                                             fbuser_name=username_fb,
+                                                             first_namefb=first_name,
+                                                             last_namefb=last_name)
+                                db.commit()
+                                #3 es pestana sugerencia
+                            elif entry['messaging'][0]['postback']['referral'].get('source'):
+                                import datetime
+                                source=entry['messaging'][0]['postback']['referral']['source']
+                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id),
+                                                             storage_owner = chat_id,
+                                                             bot_id = bot.id,
+                                                             source_type=source,
+                                                             first_contact=datetime.datetime.now(),
+                                                             fbuser_name=username_fb,
+                                                             first_namefb=first_name,
+                                                             last_namefb=last_name)
+                                db.commit()
+                            else:
+                                pass
+                    else:
+                        #4 no tiene ref
+                        import datetime
+                        debug(chat_id,'no tiene parametros fecha: %s',bot)
+                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
+                                                             (db.bot_internal_storage.bot_id == bot.id),
+                                                             storage_owner = chat_id,
+                                                             bot_id = bot.id,
+                                                             channel_id='Otros',
+                                                             first_contact=datetime.datetime.now(),
+                                                             fbuser_name=username_fb,
+                                                             first_namefb=first_name,
+                                                             last_namefb=last_name)
+                        db.commit()
+                    #------------------------------------------------------------------
+                #debug(chat_id,'Message: -- %s' % (json_envelope), bot)
                 debug(chat_id,
                       'Facebook Message: "%s"' % (json.dumps(entry)), bot)
                 if chat_text:
@@ -1618,6 +1751,7 @@ def hook():
                         if(validacion==1):#verificamos si la entrada es de tipo texto
                             #fdebug.write('Tipo texto: '+chat_text+'\n')
                             validacion=1
+                            db(db.bot_context_heap.bot_id ==bot.id).delete()
                         if(validacion==2):#verificamos si la entrada es de tipo numero
                             import re
                             if re.match("^\d+$",chat_text.lower()):
@@ -1632,6 +1766,7 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                db(db.bot_context_heap.bot_id ==bot.id).delete()
                             else:
                                 validacion=0
                         if(validacion==3):#verificamos si la entrada es un email
@@ -1649,6 +1784,7 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                db(db.bot_context_heap.bot_id ==bot.id).delete()
                             else:
                                 validacion=0
                         if(validacion==4):#verificamos si la entrada es de tipo fecha
@@ -1666,6 +1802,7 @@ def hook():
                                 db((db.bot_internal_storage.storage_owner == chat_id)&
                                    (db.bot_internal_storage.bot_id == bot.id)&
                                    (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                db(db.bot_context_heap.bot_id ==bot.id).delete()
                             else:
                                 validacion=0
                         if(validacion==5):#verificamos si la entrada es un NIT valido
@@ -1710,6 +1847,7 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                            db(db.bot_context_heap.bot_id ==bot.id).delete()
                                         else:
                                             validacion=0
                                     else:
@@ -1727,6 +1865,7 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                            db(db.bot_context_heap.bot_id ==bot.id).delete()
                                         elif val == 11 and int(num_verificador) == 0:
                                             validacion=5
                                             #NIT valido
@@ -1739,6 +1878,7 @@ def hook():
                                             db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                            db(db.bot_context_heap.bot_id ==bot.id).delete()
                                         else:
                                             validacion=0
                                         debug(chat_id, 'validacion ' + str(validacion), bot)
@@ -1799,6 +1939,7 @@ def hook():
                                         db((db.bot_internal_storage.storage_owner == chat_id)&
                                             (db.bot_internal_storage.bot_id == bot.id)&
                                             (db.bot_internal_storage.storage_key == 'send_to')).delete()
+                                        db(db.bot_context_heap.bot_id ==bot.id).delete()
                                     else:
                                         validacion=0
                                         debug(chat_id, 'validacion 0 ', bot)
@@ -1814,6 +1955,7 @@ def hook():
                             #check for smartReply with option without send_to
                             for reply in flow_item_eval['quick_replies']:
                                 valuation = chat_text.strip() == reply['title'].strip()
+                                debug(chat_id, 'valuation: "%i"' % (valuation), bot)
                                 debug(chat_id,
                                       'testing string1 before trying AI: "%s", string2: "%s"' % (chat_text.strip(),
                                                                                                reply['title'].strip()),
@@ -1826,7 +1968,7 @@ def hook():
                                     continue
                         debug(chat_id, 'evaluating smart_text/smart_reply, omitir_IA: "%s"' % (validacion), bot)
                         if(validacion<1):
-                            debug(chat_id, 'Validation is %s' % (validacion), bot)
+                            debug(chat_id, '1. Validation is %s' % (validacion), bot)
                             selretrys=db((db.bot_internal_storage.storage_owner == chat_id)&
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'retryText')).select(db.bot_internal_storage.storage_value)
@@ -1844,7 +1986,7 @@ def hook():
                             #context = response['intent']
                             #import json
                             json_string = response.json()
-                            debug(chat_id, 'evaluating AI: "%s"' % (response.text), bot)
+                            debug(chat_id, '2. evaluating AI: "%s"' % (response.text), bot)
                             #getting the conext name
                             context_= None
                             import traceback
@@ -1875,6 +2017,7 @@ def hook():
                                                      ccontent = chat_text,
                                                      ai_response = '')
                             if context_:
+                                debug(chat_id, 'context_ %s' % (context_), bot)
                                 context_id = db((db.bot_context.bot_id == bot.id)
                                             &(db.bot_intent.name == context_)
                                             &(db.bot_intent.context_id==db.bot_context.id)).select(db.bot_context.id).first()
@@ -1883,18 +2026,21 @@ def hook():
                                     flow_position_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                                (db.bot_internal_storage.bot_id == bot.id)&
                                                (db.bot_internal_storage.storage_key == 'flow_position')).select().first()
+                                    debug(chat_id, 'flow_position %s' % (flow_position_.storage_value), bot)
                                     if(int(flow_position_.storage_value)!=0):
                                         current_context_ = db((db.bot_internal_storage.storage_owner == chat_id)&
                                            (db.bot_internal_storage.bot_id == bot.id)&
                                            (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                                        debug(chat_id, 'current_context_ %s' % (current_context_), bot)
                                         current_context_id = 0
                                         if(current_context_!=None):
                                             current_context_id = current_context_.storage_value
+                                            debug(chat_id, 'current context_id %s' % (current_context_id), bot)
                                         else:
                                             default_context = db((db.bot_context.bot_id == bot.id)
                                                                  &(db.bot_context.name == 'default')).select().first()
                                             current_context_id = default_context.id
-
+                                            debug(chat_id, 'default context_id %s' % (current_context_id), bot)
                                         db.bot_context_heap.insert(storage_owner = chat_id,
                                                                    bot_id = bot.id,
                                                                    context_id = current_context_id,
@@ -2279,7 +2425,8 @@ def hook():
                 return r('sendMessage', dict(chat_id = chat_id,
                                              text = flow_item['content'],
                                              reply_markup = dict(keyboard = [keyboard], one_time_keyboard = True)))
-            def quick_reply(chat_id, flow_item, bot, **vars):
+            def quick_reply(chat_id,flow_item, bot, **vars):
+                debug(chat_id,'referencia: %s'%(reference),bot)
                 log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
                 keyboard = []
                 send_to = []

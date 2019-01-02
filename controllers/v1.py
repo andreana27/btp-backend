@@ -67,6 +67,25 @@ def authk():
         #return dict(token = db((db.auth_user.email == email) & (db.auth_user.password == passcode)).select(db.auth_user.api_token,db.auth_use-r.first_name,db.auth_user.last_name))
         #return dict(token = db.auth_user(id = authuser.id).api_token)
     return locals()
+#--------------------------------------
+@cors_allow
+@request.restful()
+def user_filters():
+    response.view = 'generic.' + request.extension
+    #@decora('User Manager')
+    def GET(token,id,name):
+        datos=[]
+        search=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_value.like('%'+name+'%', case_sensitive=False))&(db.bot_storage.storage_key=='fb_username')).select(db.bot_storage.storage_owner,db.bot_storage.storage_value,distinct=True)
+        i=0
+        for owner in search:
+            searchpic=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_owner==owner.storage_owner)&(db.bot_storage.storage_key=='fb_profile_pic')).select(db.bot_storage.storage_owner,db.bot_storage.storage_value,distinct=True).first()
+            if searchpic:
+                datos.insert(i,[owner.storage_owner,owner.storage_value,searchpic.storage_value])
+                i=i+1
+        return dict(data=datos)
+        '''searchpic=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_key=='fb_profile_pic')).select(db.bot_storage.storage_owner,db.bot_storage.storage_value,distinct=True)
+        return dict(data=search,foto=searchpic)'''
+    return locals()
 #-----------decoradores---------------
 def decora(valor):
     def decorador_put(f):
@@ -105,6 +124,14 @@ def feature_decorador():
     @decorator_of_test
     def GET(token,name):
         return dict(info="ok")
+    return locals()
+#-----------update 02/01/2019---------
+@cors_allow
+@request.restful()
+def feedapi():
+    def POST(token,botid,owner,var,value):
+        save_data=db.bot_storage.insert(bot_id=botid,storage_owner=owner,storage_key=var,storage_value=value)
+        return dict(result=save_data)
     return locals()
 #------Users update 29/10/2018--------
 @cors_allow
@@ -148,9 +175,18 @@ def delete_user():
 #*****************Profile & policies*********************
 @cors_allow
 @request.restful()
-def select_policies():
+def select_policiesALL():
     response.view = 'generic.' + request.extension
     @decora('User Policies')
+    def POST(token):
+        respuesta=db(db.auth_policies.id>0).select(orderby=db.auth_policies.id)
+        return dict(data = respuesta)
+    return locals()
+@cors_allow
+@request.restful()
+def select_policies():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
     def POST(token,name):
         respuesta=db(db.auth_policies.policies_name==name).select().first()
         return dict(data = respuesta)
@@ -169,6 +205,18 @@ def update_policies():
         return dict(data = respuesta)
     return locals()
 #................................
+@cors_allow
+@request.restful()
+def update_passTemporal():
+    response.view = 'generic.' + request.extension
+    @decora('User Profile')
+    def PUT(token,**vars):
+        import datetime
+        current_date=datetime.datetime.now()
+        password1=str(CRYPT(digest_alg='pbkdf2(1000,20,sha512)',salt=True)(vars['password'])[0])
+        respuesta=db(db.auth_user.api_token == token).update(password=password1,password_change=current_date,temporal_password=False)
+        return dict(data = respuesta)
+    return locals()
 @cors_allow
 @request.restful()
 def update_profile():
@@ -406,8 +454,9 @@ def delete_permission():
 @request.restful()
 def tracking_status():
     response.view = 'generic.' + request.extension
-    def POST(token,id):
-        resultado=db(db.bot_storage.bot_id==id).select(db.bot_storage.storage_key)
+    @decora('Bot Tracking')
+    def POST(token,id):#POST
+        resultado=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_value<>None)&(db.bot_storage.storage_key<>None)&(db.bot_storage.storage_value<>"")&(db.bot_storage.storage_key<>"")).select(db.bot_storage.storage_key,distinct=True)
         return dict(content =resultado)
     return locals()
 #----------------------------------------------------------
@@ -1308,19 +1357,117 @@ def sendMessageToBroadcast():
 #-------------------------
 @cors_allow
 @request.restful()
+def getTrackingTable2():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Tracking')
+    def GET(token,botId,key,start,end):#(token, botId, start , end):
+        #horamin=db.conversation.message_time.min().with_alias('hora')
+        from datetime import datetime, date, time, timedelta
+        import calendar
+        fechamin = db.bot_internal_storage.first_contact.min().with_alias('fecha')
+        #row = db(db.bot_internal_storage.bot_id==botId).select(fechamin)
+        #---------------------------------------------------------------------------------------------------
+        Total_storage=len(db((db.bot_internal_storage.bot_id==botId)).select(db.bot_internal_storage.storage_owner,distinct=True))
+        end=datetime.strptime(end, "%Y-%m-%d")+timedelta(days=1)
+        #---------------------------------------------------------------------------------------------------
+        storage=db((db.bot_internal_storage.bot_id==botId)&(db.bot_internal_storage.channel_id<>None)&(db.bot_storage.storage_key==key)& (db.bot_internal_storage.first_contact>=start)& (db.bot_internal_storage.first_contact<=end)).select(db.bot_internal_storage.ALL,fechamin,db.bot_storage.storage_value,distinct=True,groupby=(db.bot_internal_storage.id,db.bot_storage.storage_value))
+        return dict(Total=Total_storage,datos1=storage)
+    return locals()
+@cors_allow
+@request.restful()
+def insertNameAd():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Tracking')
+    def PUT(token, **vars):
+        actual=db((db.bot_internal_storage.bot_id == vars['idbot'])&(db.bot_internal_storage.ad_id==vars['idad'])&(db.bot_internal_storage.source_type=='ADS')).update(ad_name = vars['adname'])
+        #-----------------------------------
+        return dict(info=actual)
+    return locals()
+
+#---------------------------------------------------------
+@cors_allow
+@request.restful()
+def deleteStartedButton():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Management')
+    def GET(token, bot_token):
+        import httplib, urllib2,urllib
+        url='https://graph.facebook.com/v2.6/me/thread_settings?access_token='+bot_token
+        data = urllib.urlencode({'setting_type':'call_to_actions','thread_state':'new_thread'})
+        headers = {"Content-type": "application/json"}
+        payload = {'setting_type':'call_to_actions','thread_state':'new_thread'}
+        request = urllib2.Request(url, data=data)
+        request.get_method = lambda: 'DELETE' #'Delete pr Put'
+        response = urllib2.urlopen(request)
+        envio=response.read()
+        #-----------------------------------
+        return dict(token=envio)
+    return locals()
+@cors_allow
+@request.restful()
+def getStartedButton():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Management')
+    def GET(token, bot_token):
+        import httplib, urllib
+        parametros = urllib.urlencode({'setting_type':'call_to_actions','type':'No Auth','thread_state':'new_thread','call_to_actions':[{		'payload':'first contact bot'}]})
+        sitio = urllib.urlopen("https://graph.facebook.com/v2.6/me/thread_settings?access_token="+bot_token, parametros)
+        envio=sitio.read()
+        return dict(token=envio)
+    return locals()
+#-------------------------------------------------------------------------------------------------------
+@cors_allow
+@request.restful()
 def getTracking():
     import json
     response.view = 'generic.' + request.extension
-    def GET(token, botId, start , end):
-        messenger_Total=-1
+    #@decora('Bot Tracking')
+    def GET(token, botId,start,end):#(token, botId, start , end):
+        from datetime import datetime, date, time, timedelta
+        import calendar
+        '''messenger_Total=-1
         messenger_clients=-1
         fechamin = db.conversation.message_date.min().with_alias('fecha')
         horamin=db.conversation.message_time.min().with_alias('hora')
-        row = db(db.conversation.bot_id==botId).select(fechamin,horamin)
+        row = db(db.conversation.bot_id==botId).select(fechamin,horamin)'''
         #---------------------------------------------------------------------------------------------------
-        messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')
-                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))
-        return dict(clients=messenger_clients,fechas=row)
+        Total_storage=len(db((db.bot_internal_storage.bot_id==botId)).select(db.bot_internal_storage.storage_owner,distinct=True))
+        end=datetime.strptime(end, "%Y-%m-%d")+timedelta(days=1)
+        storage=db((db.bot_internal_storage.bot_id==botId)&(db.bot_internal_storage.channel_id<>None)& (db.bot_internal_storage.first_contact>=start)& (db.bot_internal_storage.first_contact<=end)).select(db.bot_internal_storage.channel_id,db.bot_internal_storage.ad_id,distinct=True)
+        datos=[]
+        canal=[]
+        ad=[]
+        ad_owner=[]
+        porcent=[]
+        for user in storage:
+            usuarios=len(db((db.bot_internal_storage.bot_id==botId)&(db.bot_internal_storage.channel_id==user.channel_id)&(db.bot_internal_storage.ad_id==user.ad_id)).select(db.bot_internal_storage.storage_owner,distinct=True))
+            if user.ad_id=="" or user.ad_id==None:
+                user.ad_id="N/A"
+            ad.append(user.ad_id)
+            if user.channel_id!="":
+                largo=len(user.channel_id.split(","))
+                cad=user.channel_id.split(",")
+                if largo==2:
+                    ad_propio=user.channel_id.split(",")[1]
+                else:
+                    ad_propio='N/A'
+            #--------------------------------------------------
+            ad_owner.append(ad_propio)
+            user.channel_id=user.channel_id.split(",")[0]
+            canal.append(user.channel_id)
+            datos.append(usuarios)
+            porcentaje=((int(usuarios)*100)/int(Total_storage))
+            porcent.append(porcentaje)
+        #-------------------------------------------------------------------------------------------------------
+        '''messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')
+                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))'''
+        #-----------------------------------------------------------------------------------------------------
+        #adpropio=ad_propio,
+        return dict(Total_interStorage=Total_storage,buser=datos,anuncio=ad,adpropio=ad_owner,canalito=canal,pocentajeU=porcent)
     return locals()
 
 #------------------------------------------------
