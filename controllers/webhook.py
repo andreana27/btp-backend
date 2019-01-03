@@ -711,142 +711,21 @@ def hook():
                 import json
                 import os
                 chat_id = entry['messaging'][0]['sender']['id']
-                #----------------------------------------------------
+                #debug(chat_id,'entrada0: %s'%(chat_id),bot)
+                #content_type = 'text'
+                #if entry['messaging'][0].get('message'):
                 content_type = 'text'
-                #flujo normal
-                if entry['messaging'][0].get('message'):
-                    #---------------------------------------------------------------------------------
-                    req = requests.get('https://graph.facebook.com/'+chat_id+'?fields=name,first_name,last_name,profile_pic&access_token='+conn['token'])
-                    jsonstring = req.json()
-                    username_fb=jsonstring['name']
-                    first_name=jsonstring['first_name']
-                    last_name=jsonstring['last_name']
-                    profile_pic=jsonstring['profile_pic']
-                    try:
-                        db.bot_storage.insert(storage_owner = chat_id,
-                                              bot_id = bot.id,
-                                              storage_key='fb_username',
-                                              storage_value=username_fb)
-                        db.commit()
-                        db.bot_storage.insert(storage_owner = chat_id,
-                                              bot_id = bot.id,
-                                              storage_key='fb_profile_pic',
-                                              storage_value=profile_pic)
-                        db.commit()
-                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                                 (db.bot_internal_storage.bot_id == bot.id),
-                                                                 storage_owner = chat_id,
-                                                                 bot_id = bot.id,
-                                                                 first_contact=datetime.datetime.now(),
-                                                                 fbuser_name=username_fb,
-                                                                 first_namefb=first_name,
-                                                                 last_namefb=last_name)
-                    except:
-                        pass
-                    #---------------------------------------------------------------------------------
-                    if ('text' in entry['messaging'][0]['message']):
-                        chat_text = entry['messaging'][0]['message']['text']
-                        #debug(chat_id,'entrada1: %s'%(chat_text),bot)
-                    else:
-                        chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
-                        content_type = 'attachment'
+                debug(chat_id,'Message: -- %s' % (request.vars), bot)
+                if ('text' in entry['messaging'][0]['message']):
+                    chat_text = entry['messaging'][0]['message']['text']
+                    #debug(chat_id,'entrada1: %s'%(chat_text),bot)
                 else:
-                    #flujo con messaging_referral----------
-                    import datetime
-                    import requests
-                    current_date = datetime.datetime.now()
-                    id_user=entry['messaging'][0]['sender']['id']
-                    token_bot=conn['token']
-                    #-------send id_user a fb--------------------------------------------------
-                    req = requests.get('https://graph.facebook.com/'+id_user+'?fields=name,first_name,last_name,profile_pic&access_token='+token_bot)
-                    jsonstring = req.json()
-                    username_fb=jsonstring['name']
-                    first_name=jsonstring['first_name']
-                    last_name=jsonstring['last_name']
-                    profile_pic=jsonstring['profile_pic']
-                    try:
-                        db.bot_storage.insert(storage_owner = chat_id,
-                                              bot_id = bot.id,
-                                              storage_key='fb_username',
-                                              storage_value=username_fb)
-                        db.commit()
-                        db.bot_storage.insert(storage_owner = chat_id,
-                                              bot_id = bot.id,
-                                              storage_key='fb_profile_pic',
-                                              storage_value=profile_pic)
-                    except:
-                        pass
-                    #----------------------------------------------------------------------------------
-                    if entry['messaging'][0]['postback'].get('referral'):
-                        #1 es un anuncio
-                        import datetime
-                        if entry['messaging'][0]['postback']['referral'].get('ad_id'):
-                            ads=entry['messaging'][0]['postback']['referral']['ad_id']
-                            reference=entry['messaging'][0]['postback']['referral']['ref']
-                            source=entry['messaging'][0]['postback']['referral']['source']
-                            db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id),
-                                                             storage_owner = chat_id,
-                                                             bot_id = bot.id,
-                                                             channel_id=reference,
-                                                             source_type=source,
-                                                             ad_id=ads,
-                                                             first_contact=datetime.datetime.now(),
-                                                             fbuser_name=username_fb,
-                                                             first_namefb=first_name,
-                                                             last_namefb=last_name)
-                            db.commit()
-                        else:
-                            debug(chat_id,'entro al else',bot)
-                            #2 es m.me/codigo de fb/plugin chat
-                            if entry['messaging'][0]['postback']['referral'].get('ref') and entry['messaging'][0]['postback']['referral'].get('source'):
-                                import datetime
-                                reference=entry['messaging'][0]['postback']['referral']['ref']
-                                source=entry['messaging'][0]['postback']['referral']['source']
-                                debug(chat_id,'Else    ref:-- %s source:-- %s'%(reference,source),bot)
-                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id),
-                                                             storage_owner = chat_id,
-                                                             bot_id = bot.id,
-                                                             channel_id=reference,
-                                                             source_type=source,
-                                                             first_contact=datetime.datetime.now(),
-                                                             fbuser_name=username_fb,
-                                                             first_namefb=first_name,
-                                                             last_namefb=last_name)
-                                db.commit()
-                                #3 es pestana sugerencia
-                            elif entry['messaging'][0]['postback']['referral'].get('source'):
-                                import datetime
-                                source=entry['messaging'][0]['postback']['referral']['source']
-                                db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id),
-                                                             storage_owner = chat_id,
-                                                             bot_id = bot.id,
-                                                             source_type=source,
-                                                             first_contact=datetime.datetime.now(),
-                                                             fbuser_name=username_fb,
-                                                             first_namefb=first_name,
-                                                             last_namefb=last_name)
-                                db.commit()
-                            else:
-                                pass
-                    else:
-                        #4 no tiene ref
-                        import datetime
-                        debug(chat_id,'no tiene parametros fecha: %s',bot)
-                        db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
-                                                             (db.bot_internal_storage.bot_id == bot.id),
-                                                             storage_owner = chat_id,
-                                                             bot_id = bot.id,
-                                                             channel_id='Otros',
-                                                             first_contact=datetime.datetime.now(),
-                                                             fbuser_name=username_fb,
-                                                             first_namefb=first_name,
-                                                             last_namefb=last_name)
-                        db.commit()
-                    #------------------------------------------------------------------
-                #debug(chat_id,'Message: -- %s' % (json_envelope), bot)
+                    chat_text = entry['messaging'][0]['message']['attachments'][0]['payload']['url']
+                    #debug(chat_id,'entrada2: %s'%(chat_text),bot)
+                    content_type = 'attachment'
+                #else:
+                #    chat_text = 'Empezar'
+                    #ad_ref = entry['messaging'][0]['referral']['ref']
                 debug(chat_id,
                       'Facebook Message: "%s"' % (json.dumps(entry)), bot)
                 if chat_text:
