@@ -1800,17 +1800,33 @@ def bots():
                 #bot operations
                 for bot in bots:
                     bot.variables = []
+                    #get bot individual variables
+                    for register in db(db.bot_storage.bot_id == bot.id).select():
+                        if register.storage_key in variables:
+                            bot.variables.append(register.storage_key)
+                    #set bot variables to use
+                    bot.variables = list(set(bot.variables))
+
+                fake_bots = []
+
+                if segment.comparation == 'AND':
+                    for bot in bots:
+                        if len(bot.variables) == len(variables):
+                            fake_bots.append(bot)
+
+                    bots = fake_bots
+
+                for bot in bots:
                     bot.users = []
                     bot.qualified_users = []
                     users_ids = []
                     users_pivot = []
                     #get bot individual variables
+
                     for register in db(db.bot_storage.bot_id == bot.id).select():
                         if register.storage_key in variables:
-                            bot.variables.append(register.storage_key)
                             users_ids.append(register.storage_owner)
-                    #set bot variables to use
-                    bot.variables = list(set(bot.variables))
+
                     #set bot user id to use
                     users_ids = list(set(users_ids))
                     #change to user object
@@ -1834,11 +1850,6 @@ def bots():
                         user['responses'] = responses
                         user['qualified'] = None
                     bot.users = users_pivot
-
-                if segment.comparation == 'AND':
-                    for bot in bots:
-                        if len(bot.variables) < len(variables):
-                            del bots[bots.index(bot)]
 
                 for bot in bots:
                     for user in bot.users:
