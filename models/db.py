@@ -137,7 +137,15 @@ db.define_table('bot_internal_storage',
                 Field('bot_id', 'reference bot'),
                 Field('storage_owner', 'string'),
                 Field('storage_key', 'string'),
-                Field('storage_value', 'text'))
+                Field('storage_value', 'text'),
+                Field('channel_id', 'text'),
+                Field('ad_id', 'text'),
+                Field('ad_name', 'text'),
+                Field('source_type', 'text'),
+                Field('first_contact', 'datetime'),
+                Field('fbuser_name', 'text'),
+                Field('first_namefb', 'text'),
+                Field('last_namefb', 'text'))
 
 db.define_table('bot_context_error',
                 Field('bot_id', 'reference bot'),
@@ -166,8 +174,8 @@ db.define_table('conversation',
                 Field('message_time', 'time'),
                 Field('origin', 'string'),
                 Field('medium', 'string'),
-               Field('content_type', 'string'),
-               Field('need_chat_center','boolean',default=False))
+                Field('content_type', 'string'),
+                Field('need_chat_center','boolean',default=False))
 
 db.define_table('website_token',
                 Field('bot_id', 'reference bot'),
