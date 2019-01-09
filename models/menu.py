@@ -28,7 +28,7 @@ response.menu = [
     (T('Home'), False, URL('default', 'index'), [])
 ]
 
-DEVELOPMENT_MENU = True
+DEVELOPMENT_MENU = False
 
 #########################################################################
 ## provide shortcuts for development. remove in production
@@ -135,4 +135,4 @@ def _():
         ]
 if DEVELOPMENT_MENU: _()
 
-if "auth" in locals(): auth.wikimenu() 
+if "auth" in locals(): auth.wikimenu()
