@@ -1514,7 +1514,7 @@ def broadcast():
         if broadcast_id:
             broadcast = db(db.broadcasts.id == broadcast_id).select()
             if broadcast:
-                return response.json(broadcast.first())
+                return response.json(dict(status = 'founded', data = broadcast.first()))
 
             return response.json({'error': 'Broadcast with id {} not exists'.format(broadcast_id)})
 
@@ -1525,6 +1525,7 @@ def broadcast():
             response_value = db.broadcast_rules_group.insert(**{'name': request.post_vars['name'], 'bot_id': request.post_vars['bot_id']})
             if response_value:
                 created_broadcast = db(db.broadcast_rules_group.id == response_value).select().first()
+                scheduler.queue_task('send_broadcast', [created_broadcast.id])
                 return response.json({'status': 'created', 'data': created_broadcast})
             else:
                 return response.json({'status': 'error', 'error': 'not created'})
@@ -1602,6 +1603,7 @@ def broadcasts():
             response_value = db.broadcasts.insert(**vars)
             if response_value:
                 created_broadcast = db(db.broadcasts.id == response_value).select().first()
+                scheduler.queue_task('send_broadcast', [created_broadcast.id, 'ALL'])
                 return response.json({'status': 'created', 'data': created_broadcast})
             else:
                 return response.json({'status': 'error', 'error': 'not created'})
@@ -1856,5 +1858,18 @@ def segment():
             return response.json({'status': 'deleted', 'data': vars})
         else:
             return response.json({'status': 'error', 'error': 'not deleted'})
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def send_broadcast():
+
+    @decora('Segments')
+    def POST(token,**vars):
+        broadcast_id = vars['broadcast_id']
+        send_type = vars['send_type']
+        result = scheduler.queue_task('send_broadcast', [broadcast_id, send_type])
+        return response.json(dict(result = result))
 
     return locals()
