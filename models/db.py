@@ -230,6 +230,7 @@ db.define_table('segments',
                 Field('updated_at', 'datetime')
                )
 
+
 db.define_table('broadcasts',
                Field('bot_id', 'reference bot'),
                Field('segments_id', 'reference segments'),
@@ -240,6 +241,9 @@ db.define_table('broadcasts',
                Field('created_at', 'datetime'),
                Field('updated_at', 'datetime'),
                Field('status', 'string', default = 'draft'),
+               Field('users', 'integer', default = 0),
+               Field('affected_users', 'integer', default = 0),
+               Field('affected_users_json', 'json', default = dict(data = [])),
                Field('info', 'json')
                )
 
