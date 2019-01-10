@@ -2029,6 +2029,8 @@ def send_broadcast():
     @decora('Segments')
     def POST(token,**vars):
         broadcast_id = vars['broadcast_id']
+        broadcast = db(db.broadcasts.id == broadcast_id).select().first()
+        broadcast.update_record(status='working')
         send_type = vars['send_type']
         result = scheduler.queue_task('send_broadcast', [broadcast_id, send_type])
         return response.json(dict(result = result))
