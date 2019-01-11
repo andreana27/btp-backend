@@ -43,6 +43,9 @@ def get_users(segment_id, bot_id):
                     elif segment.comparation == 'OR':
                         register['status'] = False
                     user['responses'].append(register)
+                    
+        print('users')
+        print(users)
 
         #get apply filters
         for filter in filters:

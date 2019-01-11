@@ -101,18 +101,16 @@ def decora(valor):
                     #rolenum=rolenum+" "+str(int(cosa.group_id))
                     if searchRole:
                         functionality=db((db.auth_functionality.role_id==int(cosa.group_id))&(db.auth_functionality.feature_id==db.auth_feature.id)).select()#.first()
-                        try:
-                            if functionality:
-                                for nombre in functionality:
-                                    if str(nombre.auth_feature.feature_name)==valor:
-                                        return f(*args,**kwargs)
+
+                        if functionality:
+                            for nombre in functionality:
+                                if str(nombre.auth_feature.feature_name)==valor:
+                                    return f(*args,**kwargs)
                             #else:
-                        except:
-                            raise HTTP(401)
                     else:
-                        raise HTTP(401)
+                        raise HTTP(401, 'text 1')
             else:
-                raise HTTP(401)
+                raise HTTP(401, 'text 2')
             #----------------------------
         return inner
     return decorador_put
@@ -1852,6 +1850,8 @@ def bots():
                         user['responses'] = responses
                         user['qualified'] = None
                     bot.users = users_pivot
+
+                #return response.json({'bots': bots})
 
                 for bot in bots:
                     for user in bot.users:
