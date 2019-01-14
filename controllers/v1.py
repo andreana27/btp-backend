@@ -1675,7 +1675,8 @@ def broadcast():
             response_value = db.broadcast_rules_group.insert(**{'name': request.post_vars['name'], 'bot_id': request.post_vars['bot_id']})
             if response_value:
                 created_broadcast = db(db.broadcast_rules_group.id == response_value).select().first()
-                scheduler.queue_task('send_broadcast', [created_broadcast.id])
+                created_scheduler = scheduler.queue_task('send_broadcast', [created_broadcast.id])
+                created_broadcast.update_record(scheduler_task_id = created_scheduler.result.id)
                 return response.json({'status': 'created', 'data': created_broadcast})
             else:
                 return response.json({'status': 'error', 'error': 'not created'})
@@ -1753,12 +1754,22 @@ def broadcasts():
             response_value = db.broadcasts.insert(**vars)
             if response_value:
                 created_broadcast = db(db.broadcasts.id == response_value).select().first()
-                scheduler.queue_task('send_broadcast', [created_broadcast.id, 'ALL'])
+                created_task = scheduler.queue_task('send_broadcast', [created_broadcast.id, "ALL"])
+                created_broadcast.update_record(scheduler_task = created_task.id)
                 return response.json({'status': 'created', 'data': created_broadcast})
             else:
                 return response.json({'status': 'error', 'error': 'not created'})
         except:
             return response.json({'status': 'error', 'error': 'not created'})
+
+    @decora('Segments')
+    def PUT(token, **vars):
+        import datetime
+        date_to_save = datetime.datetime.now()
+        params = dict(id = vars['id'], recurrent_users = vars['recurrent_users'], recurrent_time = vars['recurrent_time'], updated_at = date_to_save)
+        broadcast = db(db.broadcasts.id == vars['id']).select().first()
+        broadcast.update_record(**params)
+        return response.json(dict(status = 'updated', data = broadcast))
 
     return locals()
 
@@ -2034,5 +2045,51 @@ def send_broadcast():
         send_type = vars['send_type']
         result = scheduler.queue_task('send_broadcast', [broadcast_id, send_type])
         return response.json(dict(result = result))
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def create_recurrent_broadcast():
+
+    @decora('Segments')
+    def POST(token, **vars):
+        import datetime
+        import json
+        date_to_update = datetime.datetime.now()
+        broadcast_id = vars['broadcast_id']
+        task_activate = vars['task_activate']
+        broadcast = db(db.broadcasts.id == broadcast_id).select().first()
+        task = db(db.scheduler_task.id == broadcast.scheduler_task).select().first()
+        args = [broadcast.id, broadcast.recurrent_users]
+        if task_activate == 'true':
+            broadcast.update_record(recurrent_active = True, updated_at = date_to_update)
+            task.update_record(args = json.dumps(args), repeats = 0, period = int(broadcast.recurrent_time), status='QUEUED')
+        else:
+            broadcast.update_record(recurrent_active = False, updated_at = date_to_update)
+            task.update_record(repeats = 1, status='COMPLETED')
+        return response.json(dict(status = 'updated', data = broadcast, task = task))
+
+    return locals()
+
+@cors_allow
+@request.restful()
+def contexts():
+    @decora('Segments')
+    def GET(token, **vars):
+        bot_id = None
+        try:
+            bot_id = vars['bot_id']
+        except:
+            return response.json(dict(status = 'error', error = 'not id specified'))
+
+        if bot_id:
+            bots = db(db.bot.id == bot_id).select()
+            if len(bots) > 0:
+                bot = bots.first()
+                contexts = db(db.bot_context.bot_id == bot_id).select(db.bot_context.id, db.bot_context.name)
+                return response.json(dict(status = 'selected', data = contexts))
+            else:
+                return response.json(dict(status = 'error', error = 'bot with id not exists'))
 
     return locals()
