@@ -685,8 +685,34 @@ def hook():
                 debug(chat_id,'About to log conversation',bot)
                 log_conversation(chat_id, "<%s>"%(result), bot.id, 'sent','text')
                 debug(chat_id,'Finishing decisionRest',bot)
-                return #r(dict(recipient = dict(id = chat_id),
-                        #      message = dict(text = result)))
+                return
+            #-------------webView elemento-----------------------------------------
+            def webView(chat_id, flow_item, bot, **vars):
+                log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
+                debug(chat_id,'inicio de Webview', bot)
+                #------conexion con fb------------------------------------------------
+                import requests
+                #-------------------------------------------------------------------
+                idbot=str(int(bot.id))
+                iduser=str(int(chat_id))
+                uri_mod=flow_item['url']+"?bot="+idbot+"&psid="+iduser
+                #-------------------------------------------------------------------
+                params = dict(recipient = dict(id = iduser),
+                              message = dict(attachment = dict(type = "template", 
+                                                               payload = dict(template_type = "button",
+                                                                              text = flow_item['content'],
+                                                                              buttons = [dict(type = "web_url",
+                                                                                              url = uri_mod,
+                                                                                              title = flow_item['button'],
+                                                                                              webview_share_button = "hide",
+                                                                                              messenger_extensions = "true",
+                                                                                              fallback_url = uri_mod,
+                                                                                              webview_height_ratio = "tall")]))))
+                uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
+                resu = requests.post(uri, json=params)
+                debug(chat_id,'final: "%s"' % (resu), bot)
+                return r(dict(recipient = dict(id = chat_id)))
+            #---------------------------------------------------------------------------
             flow = {'text': text,
                     'quick_reply': quick_reply,
                     'sender_action': sender_action,
@@ -701,7 +727,8 @@ def hook():
                     'decisionRest':decisionRest,
                     'smartReply': smartReply,
                     'captcha': captcha,
-                    'countValidation': countValidation
+                    'countValidation': countValidation,
+                    'webView':webView
                    }
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json
