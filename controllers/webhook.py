@@ -88,7 +88,7 @@ def hook():
 
             #method to return the current context
             def get_current_context(current_chat_id, current_bot_id):
-                debug(chat_id, "c chat id: {}, c bot id: {}".format(current_chat_id, current_bot_id), bot)
+                #debug(chat_id, "c chat id: {}, c bot id: {}".format(current_chat_id, current_bot_id), bot)
                 #GET CURRENT CONTEXT SEARCH
                 user_current_context = db((db.bot_internal_storage.storage_owner == current_chat_id)&
                                        (db.bot_internal_storage.bot_id == current_bot_id)&
@@ -118,6 +118,25 @@ def hook():
 
             def r(envelope):
                 uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
+                #---------------------------------------------------------------------------------
+                if envelope.get('message').get('text'):
+                    x=envelope.get('message').get('text')
+                    if '{'and '}' in x:
+                        a = x.find("{")
+                        b = x.find("}")
+                        key=x[(a+1):b]#sin llaves
+                        coincidencia=x[a:(b+1)]#con llaves
+                        #search string in table: bot_storage
+                        get_value=db((db.bot_storage.storage_key == key)&(db.bot_storage.bot_id==bot.id)&(db.bot_storage.storage_owner==chat_id)).select().first()                      
+                        if get_value!= None:
+                            #coincidencia
+                            x = x.replace(coincidencia, get_value.storage_value)
+                            envelope['message']['text'] = x
+                        else:
+                            #sin coincidencia
+                            x = x.replace(coincidencia,"")
+                            envelope['message']['text'] = x
+                #----------------------------------------------------
                 resu = requests.post(uri, json=envelope)
                 return resu
             def debug(chat_id, text, bot, **vars):
@@ -711,7 +730,7 @@ def hook():
                 uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
                 resu = requests.post(uri, json=params)
                 debug(chat_id,'final: "%s"' % (resu), bot)
-                return r(dict(recipient = dict(id = chat_id)))
+                return #r(dict(recipient = dict(id = chat_id)))
             #---------------------------------------------------------------------------
             flow = {'text': text,
                     'quick_reply': quick_reply,
@@ -733,7 +752,6 @@ def hook():
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json
             json_envelope = json.dumps(request.vars)
-            #debug(chat_id,'entrada0: %s'%(request.vars['entry']),bot)
             for entry in request.vars['entry']:
                 import json
                 import os
@@ -1196,7 +1214,7 @@ def hook():
                 if flow_position:
                     #---------------------------------------------------------------
                     flow_position = int(flow_position.storage_value)
-                    debug(chat_id, 'flow position IF "%s"' % (flow_position), bot)
+                    #debug(chat_id, 'flow position IF "%s"' % (flow_position), bot)
                 else:
                     flow_position = 0
                 should_value_ai = db((db.bot_internal_storage.storage_owner == chat_id)&
@@ -1209,7 +1227,7 @@ def hook():
                     should_value_ai = None
                 try:
                     #-------------------------------------------------------------------------
-                    debug(chat_id, 'flow position TRY "%s"' % (flow_position), bot)
+                    #debug(chat_id, 'flow position TRY "%s"' % (flow_position), bot)
                     flow_item = context.context_json[context.name][flow_position]
                 except:
                     flow_item = None
@@ -2173,7 +2191,7 @@ def hook():
                                                                 bot_id = bot.id,
                                                                 storage_key = 'current_context',
                                                                 storage_value = context.parent_context.id)
-                            debug(chat_id,'ELSE heap context %s'%(context.parent_context.id),bot)
+                            #debug(chat_id,'ELSE heap context %s'%(context.parent_context.id),bot)
                 db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id)&
                                                              (db.bot_internal_storage.storage_key == 'flow_position'),
@@ -2181,8 +2199,7 @@ def hook():
                                                             bot_id = bot.id,
                                                             storage_key = 'flow_position',
                                                             storage_value = next_position)
-                debug(chat_id,'ELSE heap posicion %s'%(next_position),bot)
-                #debug(chat_id,'flow_item %s'%(flow_item),bot)
+                #debug(chat_id,'ELSE heap posicion %s'%(next_position),bot)
                 #phantom
                 flow_position_phantom_count = db((db.bot_phantom_context.storage_owner == chat_id)&
                                    (db.bot_phantom_context.bot_id == bot.id)).count()

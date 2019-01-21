@@ -999,7 +999,8 @@ def existsIntentName():
 def deleteMessengerConnector():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid,token):
+    @decora('Bot Management')
+    def GET(token,botid,apitoken):
         respuesta=''
         listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
         connectors=listconnectors[0]['connectors']
@@ -1015,7 +1016,8 @@ def deleteMessengerConnector():
 def deleteTelegramConnector():
     import json
     response.view = 'generic.' + request.extension
-    def GET(botid,token):
+    @decora('Bot Management')
+    def GET(token,botid,apitoken):
         respuesta=''
         listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
         connectors=listconnectors[0]['connectors']
