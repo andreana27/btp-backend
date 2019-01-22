@@ -122,20 +122,25 @@ def hook():
                 if envelope.get('message').get('text'):
                     x=envelope.get('message').get('text')
                     if '{'and '}' in x:
-                        a = x.find("{")
-                        b = x.find("}")
-                        key=x[(a+1):b]#sin llaves
-                        coincidencia=x[a:(b+1)]#con llaves
-                        #search string in table: bot_storage
-                        get_value=db((db.bot_storage.storage_key == key)&(db.bot_storage.bot_id==bot.id)&(db.bot_storage.storage_owner==chat_id)).select().first()                      
-                        if get_value!= None:
-                            #coincidencia
-                            x = x.replace(coincidencia, get_value.storage_value)
-                            envelope['message']['text'] = x
-                        else:
-                            #sin coincidencia
-                            x = x.replace(coincidencia,"")
-                            envelope['message']['text'] = x
+                        llavesopen = x.count("{")
+                        llavesclose=x.count("}")
+                        for i in range(llavesclose):
+                            a = x.find("{")
+                            b = x.find("}")
+                            key=x[(a+1):b]#sin llaves
+                            coincidencia=x[a:(b+1)]#con llaves
+                            #search string in table: bot_storage
+                            get_value=db((db.bot_storage.storage_key == key)&(db.bot_storage.bot_id==bot.id)&(db.bot_storage.storage_owner==chat_id)).select().first()
+                            if get_value!= None:
+                                #coincidencia
+                                if (a!=-1 or b!=-1) and a<b:
+                                    x = x.replace(coincidencia, get_value.storage_value)
+                                    envelope['message']['text'] = x
+                            else:
+                                if (a!=-1 or b!=-1) and a<b:
+                                    #sin coincidencia
+                                    x = x.replace(coincidencia,"")
+                                    envelope['message']['text'] = x
                 #----------------------------------------------------
                 resu = requests.post(uri, json=envelope)
                 return resu
