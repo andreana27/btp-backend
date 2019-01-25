@@ -994,23 +994,7 @@ def existsIntentName():
     def GET(token,botid,name):
         return dict(cont=db((db.bot_intent.bot_id==botid)&(db.bot_intent.name==name)).count())
     return locals()
-@cors_allow
-@request.restful()
-def deleteMessengerConnector():
-    import json
-    response.view = 'generic.' + request.extension
-    @decora('Bot Management')
-    def GET(token,botid,apitoken):
-        respuesta=''
-        listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
-        connectors=listconnectors[0]['connectors']
-        for connector in connectors:
-            if(connector['type']=='messenger'):
-                connectors.remove(connector)
-        respuesta=connectors
-        db(db.bot.id==botid).update(connectors=respuesta)
-        return dict(cont='ok')
-    return locals()
+#--------------------------------------
 @cors_allow
 @request.restful()
 def deleteTelegramConnector():
@@ -1028,6 +1012,18 @@ def deleteTelegramConnector():
         db(db.bot.id==botid).update(connectors=respuesta)
         return dict(cont='ok')
     return locals()
+#------------------------------------------    
+@cors_allow
+@request.restful()
+def getBotTrainStatus():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Management')
+    def GET(token,botid):
+        respuesta=db(db.bot.id==botid).select(db.bot.ai_configured)
+        return dict(cont=respuesta[0].ai_configured)
+    return locals()
+#--------------------------------------
 @cors_allow
 @request.restful()
 def getBotTrainStatus():
