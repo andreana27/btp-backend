@@ -997,6 +997,23 @@ def existsIntentName():
 #--------------------------------------
 @cors_allow
 @request.restful()
+def deleteMessengerConnector():
+    import json
+    response.view = 'generic.' + request.extension
+    @decora('Bot Management')
+    def GET(token,botid,apitoken):
+        respuesta=''
+        listconnectors=db(db.bot.id==botid).select(db.bot.connectors)
+        connectors=listconnectors[0]['connectors']
+        for connector in connectors:
+            if(connector['type']=='messenger'):
+                connectors.remove(connector)
+        respuesta=connectors
+        db(db.bot.id==botid).update(connectors=respuesta)
+        return dict(cont='ok')
+    return locals()
+@cors_allow
+@request.restful()
 def deleteTelegramConnector():
     import json
     response.view = 'generic.' + request.extension
