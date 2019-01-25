@@ -175,8 +175,12 @@ def send_message(bot_id, users, message, broadcast):
         return False
 
 def change_context(bot_id, users, context_id, broadcast):
+    import requests
     status = []
     affected_users = 0
+    uri = '%s://%s%s' % (request.env.wsgi_url_scheme, request.env.http_host,
+               request.env.web2py_original_uri)
+    uri = 'https://demo-backend.botprotec.com/backenddev1/webhook/hook/messenger/%s.json' % (bot_id)
 
     for user in users:
         print('bot id: {} user id: {} context id: {}'.format(bot_id, user, context_id))
@@ -203,6 +207,21 @@ def change_context(bot_id, users, context_id, broadcast):
         db.commit()
         print('result in user {user} is: {result}'.format(user = user, result = result))
         status.append(dict(user_id = user, result_query = result))
+        request_body = dict(
+            entry = [
+                dict(
+                    messaging = [
+                        dict(
+                            message = dict(text = 'changed to context'),
+                            sender = dict(id = user)
+                        )
+                    ]
+                )
+            ]
+        )
+        print(request_body)
+        resu = requests.post(uri, json=request_body)
+        print(resu.json())
     return status
 
 def send_broadcast(broadcast_id, send_type):

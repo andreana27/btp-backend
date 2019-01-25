@@ -234,6 +234,7 @@ db.define_table('segments',
 db.define_table('broadcasts',
                Field('bot_id', 'reference bot'),
                Field('segments_id', 'reference segments'),
+               Field('scheduler_task', 'integer'),
                Field('name', 'string'),
                Field('alias_name', 'string'),
                Field('action_type', 'string'),
@@ -244,6 +245,9 @@ db.define_table('broadcasts',
                Field('users', 'integer', default = 0),
                Field('affected_users', 'integer', default = 0),
                Field('affected_users_json', 'json', default = dict(data = [])),
+               Field('recurrent_active', 'boolean', default = False),
+               Field('recurrent_time', 'string', default = "0"),
+               Field('recurrent_users', 'string', default = 'NEW'),
                Field('info', 'json')
                )
 
