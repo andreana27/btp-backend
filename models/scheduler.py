@@ -180,8 +180,9 @@ def change_context(bot_id, users, context_id, broadcast):
     affected_users = 0
     uri = '%s://%s%s' % (request.env.wsgi_url_scheme, request.env.http_host,
                request.env.web2py_original_uri)
-    uri = 'https://demo-backend.botprotec.com/backenddev1/webhook/hook/messenger/%s.json' % (bot_id)
-
+    uri = 'https://demo-backend.botprotec.com/backend/webhook/hook/messenger/%s.json' % (bot_id)
+    #----bantrab----------------------------------
+    #uri = 'https://des-backend-chatbot.bantrab.com.gt/backend/webhook/hook/messenger/%s.json' % (bot_id)
     for user in users:
         print('bot id: {} user id: {} context id: {}'.format(bot_id, user, context_id))
         result =  db.bot_internal_storage.update_or_insert(

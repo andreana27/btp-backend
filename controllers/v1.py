@@ -1287,14 +1287,29 @@ def checkNeedChatCenter():
     @decora('Bot Chat Center')
     def GET(token,botId):
         respuesta =[]
-        resp=db(db.conversation.bot_id==botId)
-        needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner, distinct=True)
-        for need in needchat:
-            contactid=need['storage_owner']
-            needchat=need['need_chat_center']
-            respuesta.append(dict(owner = contactid,chatcenter = needchat))
-        return dict(cont=(respuesta))
+        resp=db((db.conversation.bot_id==botId) & (db.conversation.bot_id==db.bot_storage.bot_id)&(db.bot_storage.storage_key=="fb_username"))
+        needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner,db.bot_storage.storage_value,distinct=db.conversation.storage_owner)
+        if needchat:
+            for need in needchat:
+                contactid=need['conversation.storage_owner']
+                needchat=need['conversation.need_chat_center']
+                user=need['bot_storage.storage_value']
+                fotos=db((db.bot_storage.storage_owner==contactid)&(db.bot_storage.storage_key=='fb_profile_pic')).select(db.bot_storage.storage_value).first()
+                imagen="assets/images/person_64.png"
+                if fotos:
+                    imagen=fotos['bot_storage.storage_value']
+                respuesta.append(dict(owner = contactid,chatcenter = needchat, userfb = user,imagen=imagen))
+        else:
+            resp=db(db.conversation.bot_id==botId)
+            needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner, distinct=True)
+            for need in needchat:
+                contactid=need['storage_owner']
+                needchat=need['need_chat_center']
+                imagen=['assets/images/person_64.png']
+                respuesta.append(dict(owner = contactid,chatcenter = needchat,imagen=imagen))
+        return dict(cont=respuesta)
     return locals()
+#-------------------------------------------------------------------------------------------------------------
 @cors_allow
 @request.restful()
 def getAiRequests():
