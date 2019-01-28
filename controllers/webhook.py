@@ -382,6 +382,11 @@ def hook():
                 import base64
                 #path for fonts and images
                 fonts_path = '/opt/web2py_apps/web2py.production/applications/backend/static/fonts/captcha_fonts/'
+                #-----Bantrab--------
+                #fonts_path = '/opt/web2py_apps/web2py/applications/backend/static/fonts/captcha_fonts/'
+                #captcha_images_path = '/opt/web2py_apps/web2py/applications/backend/static/images/captcha_images/'
+                #public_captcha_images_path = 'https://des-backend-chatbot.bantrab.com.gt/backend/static/images/captcha_images/'
+                #------------------------------------------------------------------------------------------
                 font_name = fonts_path + 'Nobile-Medium.ttf'
                 captcha_images_path = '/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/'
                 public_captcha_images_path = 'https://demo-backend.botprotec.com/backend/static/images/captcha_images/'
