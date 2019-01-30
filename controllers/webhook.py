@@ -394,6 +394,8 @@ def hook():
                 image = ImageCaptcha(fonts=[font_name])
                 #idkw
                 log_conversation(chat_id, flow_item['message'], bot.id, 'sent', 'text')
+                #bienvenida
+                valor = flow_item['value']
                 #get validation request
                 retry = flow_item['validation']
                 #get message if captcha not resolved
@@ -417,6 +419,12 @@ def hook():
                     storage_key = 'captcha_quest',
                     storage_value = captcha_quest
                 )
+                #----------------------------------------------------------------------------------
+                uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
+                params=dict(recipient = dict(id = chat_id),message = dict(text = valor))
+                resu = requests.post(uri, json=params)
+                debug(chat_id,'response: "%s"' % (resu), bot)
+                #-----------------------------------------------------------------------------------
                 return r(dict(
                         recipient = dict(id = chat_id),
                         message = dict(
