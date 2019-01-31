@@ -191,7 +191,7 @@ def hook():
                                                                      (db.bot_internal_storage.bot_id == bot.id)&
                                                                      (db.bot_internal_storage.storage_key == 'current_context'),
                                                                     storage_owner = chat_id,
-                                                                    bot_id = bot.id,
+                                                                     bot_id = bot.id,
                                                                     storage_key = 'current_context',
                                                                     storage_value = int(str(current_context_.storage_value)))
                     except Exception as e:
@@ -382,14 +382,18 @@ def hook():
                 import base64
                 #path for fonts and images
                 fonts_path = '/opt/web2py_apps/web2py.production/applications/backend/static/fonts/captcha_fonts/'
-                #-----Bantrab--------
-                #fonts_path = '/opt/web2py_apps/web2py/applications/backend/static/fonts/captcha_fonts/'
-                #captcha_images_path = '/opt/web2py_apps/web2py/applications/backend/static/images/captcha_images/'
-                #public_captcha_images_path = 'https://des-backend-chatbot.bantrab.com.gt/backend/static/images/captcha_images/'
-                #------------------------------------------------------------------------------------------
                 font_name = fonts_path + 'Nobile-Medium.ttf'
                 captcha_images_path = '/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/'
                 public_captcha_images_path = 'https://demo-backend.botprotec.com/backend/static/images/captcha_images/'
+                #-----Bantrab--------
+                #fonts_path = '/opt/web2py_apps/web2py/applications/backend/static/fonts/captcha_fonts/'
+                #font_name = fonts_path + 'Nobile-Medium.ttf'
+                #captcha_images_path = '/opt/web2py_apps/web2py/applications/backend/static/images/captcha_images/'
+                #public_captcha_images_path = 'https://des-backend-chatbot.bantrab.com.gt/backend/static/images/captcha_images/'
+                #*****especial para bancredit***********
+                #public_captcha_images_path = 'https://backend-bancredit.botprotec.com/backend/static/images/captcha_images/'
+                #------------------------------------------------------------------------------------------
+                
                 #settings
                 image = ImageCaptcha(fonts=[font_name])
                 #idkw

@@ -180,6 +180,9 @@ def change_context(bot_id, users, context_id, broadcast):
     affected_users = 0
     uri = '%s://%s%s' % (request.env.wsgi_url_scheme, request.env.http_host,
                request.env.web2py_original_uri)
+    #---------bancredit-------------------------------------------------
+    #uri = 'https://backend-bancredit.botprotec.com/backend/webhook/hook/messenger/%s.json' % (bot_id)
+    #--------------------ambiente demo-----------------------------------------
     uri = 'https://demo-backend.botprotec.com/backend/webhook/hook/messenger/%s.json' % (bot_id)
     #----bantrab----------------------------------
     #uri = 'https://des-backend-chatbot.bantrab.com.gt/backend/webhook/hook/messenger/%s.json' % (bot_id)
