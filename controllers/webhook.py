@@ -448,6 +448,12 @@ def hook():
                 item_users_excluded = []
                 item_send_to = flow_item['sendTo']
                 message = flow_item['message']
+                #-----------------------------------------------------------
+                if item_send_to==None:
+                    default_context = db((db.bot_context.bot_id == bot.id)
+                                                             &(db.bot_context.name == 'default')).select().first()
+                    item_send_to = default_context.id
+                #----------------------------------------------------------------
 
                 for item_user in item_users:
                     item_users_excluded.append(item_user[0])

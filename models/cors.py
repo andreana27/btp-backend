@@ -7,7 +7,7 @@ def cors_origin():
                        'https://bancredit.botprotec.com':'https://bancredit.botprotec.com',
                        'https://grupo-veraz.botprotec.com':'https://grupo-veraz.botprotec.com',
                        'https://des-chatbot.bantrab.com.gt':'https://des-chatbot.bantrab.com.gt',
-                       'https://iga.botprotec.com':'https://iga.botprotec.com'
+                       'https://iga.botprotec.com':'https://iga.botprotec.com',
                        'https://arrend.botprotec.com':'https://arrend.botprotec.com',
                        'http://localhost:9090': 'http://localhost:9090',
 		       'http://localhost:9000': 'http://localhost:9000'}
