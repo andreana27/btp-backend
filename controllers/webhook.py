@@ -450,9 +450,17 @@ def hook():
                 message = flow_item['message']
                 #-----------------------------------------------------------
                 if item_send_to==None:
-                    default_context = db((db.bot_context.bot_id == bot.id)
-                                                             &(db.bot_context.name == 'default')).select().first()
-                    item_send_to = default_context.id
+                    #------------------------------------------------------
+                    current_context = db((db.bot_internal_storage.storage_owner == chat_id)&
+                                   (db.bot_internal_storage.bot_id == bot.id)&
+                                   (db.bot_internal_storage.storage_key == 'current_context')).select().first()
+                    if not current_context:
+                        default_context = db((db.bot_context.bot_id == bot.id)&(db.bot_context.name == 'default')).select().first()
+                        current_context = default_context.id
+                    else:
+                        current_context = int(current_context.storage_value)
+                    #debug(chat_id,'context actual %s y contexto %s'%(current_context,context),bot)
+                    item_send_to = current_context
                 #----------------------------------------------------------------
 
                 for item_user in item_users:
@@ -704,9 +712,13 @@ def hook():
                 debug(chat_id,'About to try request %s to %s' % (flow_item['method'], flow_item['url']),bot)
                 if flow_item['method'] == 'POST':
                     res = requests.post(flow_item['url'], data = data)
+                    #para ignorar los certificados-------------------
+                    #res = requests.post(flow_item['url'], data = data,verify=False)
                     result = xmlescape(res.text)
                 elif flow_item['method'] == 'GET':
                     res = requests.get(flow_item['url'], params = data)
+                    #---ignorar los certificados------------------------------
+                    #res = requests.get(flow_item['url'], params = data,verify=False)
                     result = xmlescape(res.text)
                 qr = []
                 for q in flow_item['quick_replies']:
