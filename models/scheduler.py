@@ -54,7 +54,10 @@ def get_users(segment_id, bot_id):
             #list filters to compare
             for filter in apply_filters:
                 #get user response with variable in filter
-                user_response = next(item for item in user['responses'] if item['storage_key'] == filter['variable'])
+                try:
+                    user_response = next(item for item in user['responses'] if item['storage_key'] == filter['variable'])
+                except:
+                    pass
                 #create comparation dict for check values
                 comparation = {'filter_value': None, 'user_value': None, 'filter_comparation': filter['comparation'], 'status': False}
 
@@ -87,14 +90,20 @@ def get_users(segment_id, bot_id):
                 #check if comparation is not valid, if not valid, response status false
                 if segment.comparation == 'AND':
                     if not comparation['status']:
-                        response_index = user['responses'].index(user_response)
-                        user['responses'][response_index]['status'] = False
+                        try:
+                            response_index = user['responses'].index(user_response)
+                            user['responses'][response_index]['status'] = False
+                        except:
+                            pass
 
                 #check if comparation is valid, if valid, response status true
                 elif segment.comparation == 'OR':
                     if comparation['status']:
-                        response_index = user['responses'].index(user_response)
-                        user['responses'][response_index]['status'] = True
+                        try:
+                            response_index = user['responses'].index(user_response)
+                            user['responses'][response_index]['status'] = True
+                        except:
+                            pass
 
                 user['comparations'].append(comparation)
 
@@ -104,8 +113,11 @@ def get_users(segment_id, bot_id):
                 limit = len(user['responses']) - 1
                 position = 0
                 while True:
-                    result = user['responses'][position]['status']
-                    position = position + 1
+                    try:
+                        result = user['responses'][position]['status']
+                        position = position + 1
+                    except:
+                        pass
                     if(result):
                         user['qualified'] = True
                         break
@@ -119,8 +131,11 @@ def get_users(segment_id, bot_id):
                 limit = len(user['responses']) - 1
                 position = 0
                 while True:
-                    result = user['responses'][position]['status']
-                    position = position + 1
+                    try:
+                        result = user['responses'][position]['status']
+                        position = position + 1
+                    except:
+                        pass
                     if not result:
                         user['qualified'] = False
                         break
