@@ -770,7 +770,40 @@ def hook():
                 uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
                 resu = requests.post(uri, json=params)
                 debug(chat_id,'final: "%s"' % (resu), bot)
-                return #r(dict(recipient = dict(id = chat_id)))
+                return 
+                #-------------Calendar elemento-----------------------------------------
+            def viewCalendar(chat_id, flow_item, bot, **vars):
+                log_conversation(chat_id, flow_item['content'], bot.id, 'sent','text')
+                debug(chat_id,'inicio de calendar', bot)
+                #------conexion con fb------------------------------------------------
+                import requests
+                #-------------------------------------------------------------------
+                idbot=str(int(bot.id))
+                iduser=str(int(chat_id))
+                #---other-variables----------------------------------
+                mintime=str(flow_item['mintime'])
+                maxtime=str(flow_item['maxtime'])
+                starttime=str(flow_item['starttime'])
+                intervalo=str(flow_item['intervalo'])
+                #------------------------------------------------------
+                uri_mod=flow_item['url']+"?bot="+idbot+"&psid="+iduser+"&min="+mintime+"&max="+maxtime+"&start="+starttime+"&intervalo="+intervalo
+                debug(chat_id,'uri: %s'%(uri_mod),bot)
+                #-------------------------------------------------------------------
+                params = dict(recipient = dict(id = iduser),
+                              message = dict(attachment = dict(type = "template", 
+                                                               payload = dict(template_type = "button",
+                                                                              text = flow_item['content'],
+                                                                              buttons = [dict(type = "web_url",
+                                                                                              url = uri_mod,
+                                                                                              title = flow_item['button'],
+                                                                                              webview_share_button = "hide",
+                                                                                              messenger_extensions = "true",
+                                                                                              fallback_url = uri_mod,
+                                                                                              webview_height_ratio = "tall")]))))
+                uri = 'https://graph.facebook.com/v2.6/me/messages?access_token={token}'.format(token = conn['token'])
+                resu = requests.post(uri, json=params)
+                debug(chat_id,'final: "%s"' % (resu), bot)
+                return
             #---------------------------------------------------------------------------
             flow = {'text': text,
                     'quick_reply': quick_reply,
@@ -787,7 +820,8 @@ def hook():
                     'smartReply': smartReply,
                     'captcha': captcha,
                     'countValidation': countValidation,
-                    'webView':webView
+                    'webView':webView,
+                    'viewCalendar':viewCalendar
                    }
             #if request.vars['hub.verify_token'] == conn['token'] and request.vars['hub.mode'] == 'subscribe':
             import json

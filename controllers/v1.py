@@ -2167,3 +2167,47 @@ def location_webview_user():
         #-------------------------------------------------------------------------------------------------------------
         return dict(deptos=deptos,munis=munis,psid=psid,bot=bot_id)
     return locals()
+#---------------------------------------------------------------------
+@cors_allow
+@request.restful()
+def calendar_webview():
+    response.view = 'generic.' + request.extension
+    def POST(psid,hora,fecha,bot_id):
+        horita=db.bot_storage.update_or_insert((db.bot_storage.storage_owner == psid)&
+                                                    (db.bot_storage.bot_id == bot_id)&
+                                                    (db.bot_storage.storage_key =='meeting_time'),
+                                                  storage_owner = psid,
+                                                  bot_id = bot_id,
+                                                  storage_key='meeting_time',
+                                                  storage_value=hora)
+        fechita=db.bot_storage.update_or_insert((db.bot_storage.storage_owner == psid)&
+                                                    (db.bot_storage.bot_id == bot_id)&
+                                                    (db.bot_storage.storage_key =='meeting_date'),
+                                                  storage_owner = psid,
+                                                  bot_id = bot_id,
+                                                  storage_key='meeting_date',
+                                                  storage_value=fecha)
+        #-------------------------------------------------------------------------------------------------------------
+        import requests
+        status = []
+        uri = 'https://demo-backend.botprotec.com/backend/webhook/hook/messenger/%s.json' % (bot_id)
+        print('result in user {user}'.format(user = psid))
+        status.append(dict(user_id = psid))
+        request_body = dict(
+            entry = [
+                dict(
+                    messaging = [
+                        dict(
+                            message = dict(text = 'siguiente bloque'),
+                            sender = dict(id = psid)
+                        )
+                    ]
+                )
+            ]
+        )
+        print(request_body)
+        resu = requests.post(uri, json=request_body)
+        print(resu.json())
+        #-------------------------------------------------------------------------------------------------------------
+        return dict(hora=horita,fecha=fechita)
+    return locals()
