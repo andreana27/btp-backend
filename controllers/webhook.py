@@ -382,12 +382,14 @@ def hook():
                 import base64
                 #path for fonts and images
                 fonts_path = '/opt/web2py_apps/web2py.production/applications/backend/static/fonts/captcha_fonts/'
-                font_name = fonts_path + 'Nobile-Medium.ttf'
+                font_name = fonts_path + 'meet_me_in_montauk.ttf'
+                #font_name = fonts_path + 'Nobile-Medium.ttf'
                 captcha_images_path = '/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/'
                 public_captcha_images_path = 'https://demo-backend.botprotec.com/backend/static/images/captcha_images/'
                 #-----Bantrab--------
                 #fonts_path = '/opt/web2py_apps/web2py/applications/backend/static/fonts/captcha_fonts/'
-                #font_name = fonts_path + 'Nobile-Medium.ttf'
+                ##font_name = fonts_path + 'Nobile-Medium.ttf'
+                #font_name = fonts_path + 'meet_me_in_montauk.ttf'
                 #captcha_images_path = '/opt/web2py_apps/web2py/applications/backend/static/images/captcha_images/'
                 #public_captcha_images_path = 'https://des-backend-chatbot.bantrab.com.gt/backend/static/images/captcha_images/'
                 #*****especial para bancredit***********
@@ -396,6 +398,7 @@ def hook():
                 
                 #settings
                 image = ImageCaptcha(fonts=[font_name])
+                image = ImageCaptcha(width=200,height=50,font_sizes=[45])# modificado imagen captcha
                 #idkw
                 log_conversation(chat_id, flow_item['message'], bot.id, 'sent', 'text')
                 #bienvenida
@@ -408,12 +411,13 @@ def hook():
                 length = int(flow_item['length'])
                 #create captcha value
                 captcha_quest = "".join([random.choice(string.letters) for i in xrange(length)])
-                captcha_quest = captcha_quest.lower()
+                captcha_quest = captcha_quest.upper()
+                captcha_quest1 ="  "+ captcha_quest+"  "# modificado imagen captcha
                 #create captcha quest route
                 captcha_image_route = captcha_images_path + captcha_quest + ".png"
                 public_captcha_image_route = public_captcha_images_path + captcha_quest + ".png"
                 #generate image
-                image_created = image.write(captcha_quest, captcha_image_route)
+                image_created = image.write(captcha_quest1, captcha_image_route)
                 db.bot_internal_storage.update_or_insert(
                     (db.bot_internal_storage.storage_owner == chat_id) &
                     (db.bot_internal_storage.bot_id == bot.id) &
@@ -1054,7 +1058,8 @@ def hook():
                         else:
                             possible_captcha = None
                         if possible_captcha:
-                            value_to_compare = possible_captcha.storage_value
+                            #modificado captcha tamano imagen------------------------
+                            value_to_compare = possible_captcha.storage_value.strip()
                             image_route = "/opt/web2py_apps/web2py.production/applications/backend/static/images/captcha_images/{}.png".format(possible_captcha.storage_value)
                             try:
                                 os.remove(image_route)
