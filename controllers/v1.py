@@ -313,8 +313,8 @@ def add_user_role():
         if(db((db.auth_membership.user_id == vars['iduser']) &(db.auth_membership.group_id == vars['idrol']) ).count()<1):
             user=db.auth_membership.insert(user_id = vars['iduser'],group_id = vars['idrol'])
             if user:
-            today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+                today = datetime.datetime.now()
+                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
             if usermaker:
                 descripcion="Agregar usuario ID"+vars['iduser']+" en el rol No. "+vars['idrol']
                 seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
@@ -2243,9 +2243,9 @@ def auth_log():
     response.view = 'generic.' + request.extension
     #@decora('User Manager')
     def GET(token):#es POST
-        #maxID=db(db.history_user).select(db.history_user.id.max()).first()[db.history_user.id.max()]
-        #ids=int(str(maxID))-30
-        #seleccion=db(db.history_user.id>=ids).select(orderby=~db.history_user.id)
-        seleccion=db(db.history_user.id>0).select()
+        maxID=db(db.history_user).select(db.history_user.id.max()).first()[db.history_user.id.max()]
+        ids=int(str(maxID))-30
+        seleccion=db(db.history_user.id>=ids).select(orderby=~db.history_user.id)
+        #seleccion=db(db.history_user.id>0).select()
         return dict(data = seleccion)
     return locals()
