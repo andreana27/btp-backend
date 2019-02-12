@@ -147,10 +147,10 @@ db.define_table('bot_internal_storage',
                 Field('first_namefb', 'text'),
                 Field('last_namefb', 'text'))
 
-db.define_table('bot_context_error',
-                Field('bot_id', 'reference bot'),
-                Field('storage_owner', 'string'),
-                Field('position_flow', 'string'))
+db.define_table('history_user',
+                Field('action_date', 'datetime'),
+                Field('description', 'string'),
+                Field('responsible_user', 'string'))
 
 db.define_table('bot_context_heap',
                 Field('bot_id', 'reference bot'),
