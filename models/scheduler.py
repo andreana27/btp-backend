@@ -31,7 +31,7 @@ def get_users(segment_id, bot_id):
         #get users
         users = []
         for user_id in users_id:
-            user = {"id": user_id, "responses": [], "comparations": [], "qualified": False}
+            user = {"id": user_id, "responses": [], "comparations": [], "qualified": False, "hasInvalidResponse": False}
             users.append(user)
 
         #get responses for user
@@ -54,58 +54,61 @@ def get_users(segment_id, bot_id):
             #list filters to compare
             for filter in apply_filters:
                 #get user response with variable in filter
+                isResponseValid = True
                 try:
                     user_response = next(item for item in user['responses'] if item['storage_key'] == filter['variable'])
                 except:
-                    pass
-                #create comparation dict for check values
-                comparation = {'filter_value': None, 'user_value': None, 'filter_comparation': filter['comparation'], 'status': False}
+                    isResponseValid = False
+                    user['hasInvalidResponse'] = True
+                if isResponseValid:
+                    #create comparation dict for check values
+                    comparation = {'filter_value': None, 'user_value': None, 'filter_comparation': filter['comparation'], 'status': False}
 
-                #filter variable type based
-                if filter['type'] == 'date':
-                    comparation['user_value'] = datetime.strptime(user_response['storage_value'],  "%d/%m/%Y")
-                    comparation['filter_value'] = datetime.strptime(filter['value'],  "%Y-%m-%d")
-                elif filter['type'] == 'numeric':
-                    comparation['user_value'] = int(user_response['storage_value'])
-                    comparation['filter_value'] = int(filter['value'])
-                else:
-                    comparation['user_value'] = user_response['storage_value']
-                    comparation['filter_value'] = filter['value']
+                    #filter variable type based
+                    if filter['type'] == 'date':
+                        comparation['user_value'] = datetime.strptime(user_response['storage_value'],  "%d/%m/%Y")
+                        comparation['filter_value'] = datetime.strptime(filter['value'],  "%Y-%m-%d")
+                    elif filter['type'] == 'numeric':
+                        comparation['user_value'] = int(user_response['storage_value'])
+                        comparation['filter_value'] = int(filter['value'])
+                    else:
+                        comparation['user_value'] = user_response['storage_value']
+                        comparation['filter_value'] = filter['value']
 
-                #compare value with filter
-                if filter['comparation'] == 'equals':
-                    if comparation['user_value'] == comparation['filter_value']:
-                        comparation['status'] = True
-                if filter['comparation'] == 'not-equals':
-                    if comparation['user_value'] != comparation['filter_value']:
-                        comparation['status'] = True
+                    #compare value with filter
+                    if filter['comparation'] == 'equals':
+                        if comparation['user_value'] == comparation['filter_value']:
+                            comparation['status'] = True
+                    if filter['comparation'] == 'not-equals':
+                        if comparation['user_value'] != comparation['filter_value']:
+                            comparation['status'] = True
 
-                if (filter['comparation'] == 'greater-than') | (filter['comparation'] == 'after'):
-                    if comparation['user_value'] > comparation['filter_value']:
-                        comparation['status'] = True
-                if (filter['comparation'] == 'smaller-than') | (filter['comparation'] == 'before'):
-                    if comparation['user_value'] < comparation['filter_value']:
-                        comparation['status'] = True
+                    if (filter['comparation'] == 'greater-than') | (filter['comparation'] == 'after'):
+                        if comparation['user_value'] > comparation['filter_value']:
+                            comparation['status'] = True
+                    if (filter['comparation'] == 'smaller-than') | (filter['comparation'] == 'before'):
+                        if comparation['user_value'] < comparation['filter_value']:
+                            comparation['status'] = True
 
-                #check if comparation is not valid, if not valid, response status false
-                if segment.comparation == 'AND':
-                    if not comparation['status']:
-                        try:
-                            response_index = user['responses'].index(user_response)
-                            user['responses'][response_index]['status'] = False
-                        except:
-                            pass
+                    #check if comparation is not valid, if not valid, response status false
+                    if segment.comparation == 'AND':
+                        if not comparation['status']:
+                            try:
+                                response_index = user['responses'].index(user_response)
+                                user['responses'][response_index]['status'] = False
+                            except:
+                                pass
 
-                #check if comparation is valid, if valid, response status true
-                elif segment.comparation == 'OR':
-                    if comparation['status']:
-                        try:
-                            response_index = user['responses'].index(user_response)
-                            user['responses'][response_index]['status'] = True
-                        except:
-                            pass
+                    #check if comparation is valid, if valid, response status true
+                    elif segment.comparation == 'OR':
+                        if comparation['status']:
+                            try:
+                                response_index = user['responses'].index(user_response)
+                                user['responses'][response_index]['status'] = True
+                            except:
+                                pass
 
-                user['comparations'].append(comparation)
+                    user['comparations'].append(comparation)
 
         if segment.comparation == 'OR':
             for user in users:
@@ -116,31 +119,43 @@ def get_users(segment_id, bot_id):
                     try:
                         result = user['responses'][position]['status']
                         position = position + 1
+                        if(result):
+                            user['qualified'] = True
+                            break
+                        if position > limit:
+                            break
                     except:
-                        pass
-                    if(result):
+                        user['qualified'] = False
+                        position = position + 1
+                        if position > limit:
+                            break
+
+                    '''if(result):
                         user['qualified'] = True
                         break
                     if position > limit:
-                        break
+                        break'''
             print('users OR: {}'.format(users))
 
         if segment.comparation == 'AND':
             for user in users:
-                user['qualified'] = True
-                limit = len(user['responses']) - 1
-                position = 0
-                while True:
-                    try:
-                        result = user['responses'][position]['status']
-                        position = position + 1
-                    except:
-                        pass
-                    if not result:
-                        user['qualified'] = False
-                        break
-                    if position > limit:
-                        break
+                if user['hasInvalidResponse']:
+                    user['qualified'] = False
+                else:
+                    user['qualified'] = True
+                    limit = len(user['responses']) - 1
+                    position = 0
+                    while True:
+                        try:
+                            result = user['responses'][position]['status']
+                            position = position + 1
+                        except:
+                            pass
+                        if not result:
+                            user['qualified'] = False
+                            break
+                        if position > limit:
+                            break
             print('users AND: {}'.format(users))
 
         print('segment comparation is: {}'.format(segment.comparation))
