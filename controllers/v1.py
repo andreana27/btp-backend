@@ -1312,7 +1312,7 @@ def checkNeedChatCenter():
     @decora('Bot Chat Center')
     def GET(token,botId):
         respuesta =[]
-        resp=db((db.conversation.bot_id==botId) & (db.conversation.bot_id==db.bot_storage.bot_id)&(db.bot_storage.storage_key=="fb_username"))
+        resp=db((db.conversation.bot_id==botId) & (db.conversation.storage_owner==db.bot_storage.storage_owner)& (db.conversation.bot_id==db.bot_storage.bot_id)&(db.bot_storage.storage_key=="fb_username"))
         needchat=resp.select(db.conversation.need_chat_center,db.conversation.storage_owner,db.bot_storage.storage_value,distinct=db.conversation.storage_owner)
         if needchat:
             for need in needchat:
@@ -1430,7 +1430,7 @@ def getTrackingTable2():
     import json
     response.view = 'generic.' + request.extension
     @decora('Bot Tracking')
-    def GET(token,botId,key,start,end):#(token, botId, start , end):
+    def GET(token,botId,key,start,end):
         #horamin=db.conversation.message_time.min().with_alias('hora')
         from datetime import datetime, date, time, timedelta
         import calendar
@@ -1440,7 +1440,11 @@ def getTrackingTable2():
         Total_storage=len(db((db.bot_internal_storage.bot_id==botId)).select(db.bot_internal_storage.storage_owner,distinct=True))
         end=datetime.strptime(end, "%Y-%m-%d")+timedelta(days=1)
         #---------------------------------------------------------------------------------------------------
-        storage=db((db.bot_internal_storage.bot_id==botId)&(db.bot_internal_storage.channel_id<>None)&(db.bot_storage.storage_key==key)& (db.bot_internal_storage.first_contact>=start)& (db.bot_internal_storage.first_contact<=end)).select(db.bot_internal_storage.ALL,fechamin,db.bot_storage.storage_value,distinct=True,groupby=(db.bot_internal_storage.id,db.bot_storage.storage_value))
+        storage=db((db.bot_internal_storage.bot_id==botId)&(db.bot_internal_storage.channel_id<>None)&
+                (db.bot_storage.storage_key==key)& (db.bot_internal_storage.first_contact>=start)& 
+                (db.bot_internal_storage.first_contact<=end)&
+                (db.bot_internal_storage.storage_owner==db.bot_storage.storage_owner)&
+                (db.bot_internal_storage.bot_id==db.bot_storage.bot_id)).select(db.bot_internal_storage.ALL,fechamin,db.bot_storage.storage_value,distinct=True,groupby=(db.bot_internal_storage.id,db.bot_storage.storage_value))
         return dict(Total=Total_storage,datos1=storage)
     return locals()
 @cors_allow
@@ -1494,15 +1498,10 @@ def getStartedButton():
 def getTracking():
     import json
     response.view = 'generic.' + request.extension
-    #@decora('Bot Tracking')
+    @decora('Bot Tracking')
     def GET(token, botId,start,end):#(token, botId, start , end):
         from datetime import datetime, date, time, timedelta
         import calendar
-        '''messenger_Total=-1
-        messenger_clients=-1
-        fechamin = db.conversation.message_date.min().with_alias('fecha')
-        horamin=db.conversation.message_time.min().with_alias('hora')
-        row = db(db.conversation.bot_id==botId).select(fechamin,horamin)'''
         #---------------------------------------------------------------------------------------------------
         Total_storage=len(db((db.bot_internal_storage.bot_id==botId)).select(db.bot_internal_storage.storage_owner,distinct=True))
         end=datetime.strptime(end, "%Y-%m-%d")+timedelta(days=1)
@@ -1531,11 +1530,6 @@ def getTracking():
             datos.append(usuarios)
             porcentaje=((int(usuarios)*100)/int(Total_storage))
             porcent.append(porcentaje)
-        #-------------------------------------------------------------------------------------------------------
-        '''messenger_clients=len(db((db.conversation.bot_id==botId) & (db.conversation.medium=='messenger')&(db.conversation.origin=='client')
-                                    & (db.conversation.message_date>=start)& (db.conversation.message_date<=end)).select(db.conversation.storage_owner,distinct=True))'''
-        #-----------------------------------------------------------------------------------------------------
-        #adpropio=ad_propio,
         return dict(Total_interStorage=Total_storage,buser=datos,anuncio=ad,adpropio=ad_owner,canalito=canal,pocentajeU=porcent)
     return locals()
 
@@ -2215,6 +2209,9 @@ def calendar_webview():
         #-------------------------------------------------------------------------------------------------------------
         import requests
         status = []
+        #--------bantrab--------------
+        #uri = 'https://des-backend-chatbot.bantrab.com.gt/backend/webhook/hook/messenger/%s.json' % (bot_id)
+        #----------------ambiente demo-------------------------------
         uri = 'https://demo-backend.botprotec.com/backend/webhook/hook/messenger/%s.json' % (bot_id)
         print('result in user {user}'.format(user = psid))
         status.append(dict(user_id = psid))
@@ -2231,6 +2228,8 @@ def calendar_webview():
             ]
         )
         print(request_body)
+        #bantrab--------------------
+        #resu = requests.post(uri, json=request_body,verify=False)
         resu = requests.post(uri, json=request_body)
         print(resu.json())
         #-------------------------------------------------------------------------------------------------------------

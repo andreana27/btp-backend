@@ -970,7 +970,7 @@ def hook():
                     else:
                         #4 no tiene ref
                         import datetime
-                        debug(chat_id,'no tiene parametros fecha: %s',bot)
+                        #debug(chat_id,'no tiene parametros fecha: %s',bot)
                         db.bot_internal_storage.update_or_insert((db.bot_internal_storage.storage_owner == chat_id)&
                                                              (db.bot_internal_storage.bot_id == bot.id),
                                                              storage_owner = chat_id,
