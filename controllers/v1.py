@@ -530,7 +530,8 @@ def password_reset():
 @request.restful()
 def user():
     response.view = 'generic.' + request.extension
-    def GET(email):
+    #@decora('User Manager')
+    def POST(email):
         #this function is only for verificaction of user existance
         return dict(count = db(db.auth_user.email == email).count())
     @decora('User Manager')
@@ -2232,7 +2233,6 @@ def calendar_webview():
         #resu = requests.post(uri, json=request_body,verify=False)
         resu = requests.post(uri, json=request_body)
         print(resu.json())
-        #-------------------------------------------------------------------------------------------------------------
         return dict(hora=horita,fecha=fechita)
     return locals()
 #--------------------------------------------------------------------------------------
@@ -2247,4 +2247,35 @@ def auth_log():
         seleccion=db(db.history_user.id>=ids).select(orderby=~db.history_user.id)
         #seleccion=db(db.history_user.id>0).select()
         return dict(data = seleccion)
+    return locals()
+#-----------------------------------------------------------------------------------
+@cors_allow
+@request.restful()
+def values_users():
+    response.view = 'generic.' + request.extension
+    #@decora('Bot Chat Center')
+    def POST(token,id,owner):
+        resultado=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_value<>None)&(db.bot_storage.storage_key<>None)&
+                  (db.bot_storage.storage_value<>"")&(db.bot_storage.storage_key<>"") &(db.bot_storage.storage_owner==owner)).select(
+                  db.bot_storage.storage_key,db.bot_storage.storage_value,distinct=True)
+        return dict(content =resultado)
+    return locals()
+@cors_allow
+@request.restful()
+def delete_variable():
+    response.view = 'generic.' + request.extension
+    #@decora('Bot Chat Center')
+    def POST(token,id,owner,key,value):
+        borrar=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_owner==owner)&
+           (db.bot_storage.storage_key==key)&(db.bot_storage.storage_value==value)).delete()
+        return dict(data =borrar)
+    return locals()
+@cors_allow
+@request.restful()
+def insert_variable():
+    response.view = 'generic.' + request.extension
+    #@decora('Bot Chat Center')
+    def POST(token,id,owner,key,value):
+        seleccion=db.bot_storage.insert(bot_id=id,storage_owner=owner,storage_key=key,storage_value=value)
+        return dict(data =seleccion)
     return locals()
