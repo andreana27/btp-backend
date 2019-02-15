@@ -147,7 +147,7 @@ def qualificationkey():
                 storage_update=db((db.bot_storage.storage_owner==owner.storage_owner)&(db.bot_storage.storage_key==key_update)).update(storage_key=key_update,storage_value = nameKey_update)
         else:
             resultado=0
-        return dic(data=resultado)
+        return dict(data=resultado)
     return locals()
 #------Users update 29/10/2018--------
 def count_users():
@@ -178,10 +178,10 @@ def update_user():
         respuesta=db(db.auth_user.id == vars['id']).update(first_name = vars['first_name'],last_name = vars['last_name'],email=vars['email'],enabled_access=vars['enabled_access'])
         if respuesta:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="actualizacion del usuario "+vars['first_name']+" "+vars['last_name']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)        
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)        
         return dict(data = respuesta)
     return locals()
 @cors_allow
@@ -221,14 +221,20 @@ def update_policies():
         import datetime
         if vars['name']=='expirable-password':
              respuesta=db(db.auth_policies.policies_name==vars['name']).update(policies_active=vars['status'],date_end=vars['fecha2'])
+             if respuesta:
+                today = datetime.datetime.now()
+                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
+                if usermaker:
+                    descripcion="Actualizacion de la politica "+vars['name']+" con status:"+vars['status']+" y "+vars['fecha2']+" días para expirar"
+                    seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         else:
             respuesta=db(db.auth_policies.policies_name==vars['name']).update(policies_active=vars['status'])
-        if respuesta:
-            today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
-            if usermaker:
-                descripcion="Actualizacion de la politica "+vars['name']+" con status:"+vars['status']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+            if respuesta:
+                today = datetime.datetime.now()
+                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
+                if usermaker:
+                    descripcion="Actualizacion de la politica "+vars['name']+" con status:"+vars['status']
+                    seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         return dict(data = respuesta)
     return locals()
 #................................
@@ -307,6 +313,9 @@ def create_role():
 def add_user_role():
     response.view = 'generic.' + request.extension
     @decora('Role Manager')
+    def GET(token,id):
+        return dict(count = db(db.auth_membership.user_id == id).count())
+    @decora('Role Manager')
     def POST(token,**vars):
         import datetime
         response='ok add'
@@ -314,10 +323,10 @@ def add_user_role():
             user=db.auth_membership.insert(user_id = vars['iduser'],group_id = vars['idrol'])
             if user:
                 today = datetime.datetime.now()
-                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="Agregar usuario ID"+vars['iduser']+" en el rol No. "+vars['idrol']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         else:
             response='user already exists'
         return dict(data = response)
@@ -349,10 +358,10 @@ def delete_Userinroles():
         hola=db((db.auth_membership.user_id==vars['iduser'])&(db.auth_membership.group_id==vars['idrol'])).delete()
         if hola:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="Eliminacion del usuario con ID "+vars['iduser']+" del rol ID "+vars['idrol']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         return dict(data =hola)
     return locals()
 @cors_allow
@@ -377,10 +386,10 @@ def role():
         roleok=db.auth_group.insert(role = vars['role'],description = vars['description'],access_role = 'enable')
         if roleok:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="creacion del rol "+vars['role']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         #busqueda del rol
         search=db(db.auth_group.role == vars['role']).select(db.auth_group.id)
         return dict(data = search)
@@ -395,10 +404,10 @@ def update_role():
         actual=db(db.auth_group.id == vars['id']).update(role = vars['role'],description = vars['description'],access_role=vars['access_role'])
         if actual:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="Actualizacion de datos del rol "+vars['role']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         return dict(data = actual)
     return locals()
 #***********Features********************
@@ -447,10 +456,10 @@ def add_functionality():
             funcionok=db.auth_functionality.insert(feature_id =vars['idfeature'],role_id=vars['id'])
             if funcionok:
                 today = datetime.datetime.now()
-                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+                usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
                 if usermaker:
                     descripcion="creacion de permiso para modulo No. "+vars['idfeature']+" asignada al rol No. "+vars['id']
-                    seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                    seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         else:
             respuesta='already exists'
         return dict(data = respuesta)
@@ -465,10 +474,10 @@ def delete_functionality():
         hola=db((db.auth_functionality.role_id==vars['id'])&(db.auth_functionality.feature_id==vars['idfeature'])).delete()
         if hola:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==token)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="Eliminacion de la funcionalidad No. "+vars['idfeature']+" del rol No. "+vars['id']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         return dict(data =hola)
     return locals()
 #---------------------------------------------------------
@@ -570,10 +579,10 @@ def user():
         #-----------------------------------------------------------------------------------------------
         if user:
             today = datetime.datetime.now()
-            usermaker=db((db.auth_user.api_token==tokenmaker)).select(db.auth_user.first_name,db.auth_user.last_name).first()
+            usermaker=db((db.auth_user.api_token==tokenmaker)).select(db.auth_user.email).first()
             if usermaker:
                 descripcion="creacion del usuario "+vars['firstName']+" "+vars['lastName']
-                seleccion=db.history_user.insert(action_date=today,responsible_user=(usermaker.first_name+" "+usermaker.last_name),description=descripcion)
+                seleccion=db.history_user.insert(action_date=today,responsible_user=usermaker.email,description=descripcion)
         #return dict(token = db(db.auth_user.email == userData.first_name).select(db.auth_user.api_token))
         return dict(data = generatedToken)
     return locals()
@@ -2240,12 +2249,23 @@ def calendar_webview():
 @request.restful()
 def auth_log():
     response.view = 'generic.' + request.extension
-    #@decora('User Manager')
+    @decora('User Manager')
     def GET(token):#es POST
         maxID=db(db.history_user).select(db.history_user.id.max()).first()[db.history_user.id.max()]
         ids=int(str(maxID))-30
         seleccion=db(db.history_user.id>=ids).select(orderby=~db.history_user.id)
         #seleccion=db(db.history_user.id>0).select()
+        return dict(data = seleccion)
+    return locals()
+@cors_allow
+@request.restful()
+def history_rows():
+    response.view = 'generic.' + request.extension
+    @decora('User Manager')
+    def GET(token,filas):#es POST
+        maxID=db(db.history_user).select(db.history_user.id.max()).first()[db.history_user.id.max()]
+        ids=int(str(maxID))-int(filas)
+        seleccion=db(db.history_user.id>=ids).select(orderby=~db.history_user.id)
         return dict(data = seleccion)
     return locals()
 #-----------------------------------------------------------------------------------
