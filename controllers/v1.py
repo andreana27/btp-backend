@@ -140,13 +140,18 @@ def feedapi():
 def qualificationkey():
     response.view = 'generic.' + request.extension
     def GET(key,namekey,key_update,namekey_update):
-        get_owner=db((db.bot_storage.storage_key == key)&(db.bot_storage.storage_value==namekey)).select(db.bot_storage.storage_owner)
+        resultado=0
+        get_owner=db((db.bot_storage.storage_key == key)&(db.bot_storage.storage_value==namekey)).select(
+                  db.bot_storage.storage_owner,db.bot_storage.bot_id)
         if get_owner:
-            resultado=1
             for owner in get_owner:
-                storage_update=db((db.bot_storage.storage_owner==owner.storage_owner)&(db.bot_storage.storage_key==key_update)).update(storage_key=key_update,storage_value = nameKey_update)
-        else:
-            resultado=0
+                 resultadoactual=db.bot_storage.update_or_insert((db.bot_storage.storage_owner == owner.storage_owner)&
+                                                    (db.bot_storage.storage_key ==key_update),
+                                                  storage_owner = owner.storage_owner,
+                                                  bot_id = owner.bot_id,
+                                                  storage_key=key_update,
+                                                  storage_value=namekey_update)
+            resultado=1
         return dict(data=resultado)
     return locals()
 #------Users update 29/10/2018--------
