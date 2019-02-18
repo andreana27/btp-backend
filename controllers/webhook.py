@@ -134,7 +134,8 @@ def hook():
                             if get_value!= None:
                                 #coincidencia
                                 if (a!=-1 or b!=-1) and a<b:
-                                    x = x.replace(coincidencia, get_value.storage_value)
+                                    #x = x.replace(coincidencia, get_value.storage_value)
+                                    x = x.replace(coincidencia, get_value.storage_value.decode('utf-8'))
                                     envelope['message']['text'] = x
                             else:
                                 if (a!=-1 or b!=-1) and a<b:
