@@ -628,11 +628,14 @@ def bot_variables():
 def bot_conversations():
     response.view = 'generic.' + request.extension
     @decora('Bot Chat Center')
-    def GET(token,bot_id,start_limit,end_limit):
+    def GET(token,bot_id,start_limit,end_limit,owner):
         #getting the logged chats with a bot, delimited by a number of data
         v_start_limit = int(start_limit)
         v_end_limit = int(end_limit)
-        return dict(data = db(db.conversation.bot_id == bot_id).select(db.conversation.id, db.conversation.storage_owner, db.conversation.ctype, db.conversation.ccontent, db.conversation.message_date,db.conversation.message_time,db.conversation.origin, db.conversation.medium, db.conversation.content_type, limitby=(v_start_limit,v_end_limit), orderby=db.conversation.id))
+        return dict(data = db((db.conversation.bot_id == bot_id)&(db.conversation.storage_owner == owner)).select(db.conversation.id,
+                     db.conversation.storage_owner, db.conversation.ctype, db.conversation.ccontent, 
+                     db.conversation.message_date,db.conversation.message_time,db.conversation.origin, 
+                     db.conversation.medium, db.conversation.content_type, limitby=(v_start_limit,v_end_limit), orderby=db.conversation.id))
     return locals()
 
 @cors_allow
@@ -651,9 +654,10 @@ def bot_conversations_contact():
 def bot_conversations_recordcount():
     response.view = 'generic.' + request.extension
     @decora('Bot Chat Center')
-    def GET(token,bot_id):
+    def GET(token,bot_id,owner):
         #getting the number of logged messages that a bot has
-        return dict(data = db(db.conversation.bot_id == bot_id).count())
+        #&(db.conversation.storage_owner==owner)
+        return dict(data = db((db.conversation.bot_id == bot_id)&(db.conversation.storage_owner==owner)).count())
     return locals()
 
 @cors_allow
@@ -2289,18 +2293,25 @@ def values_users():
 @request.restful()
 def delete_variable():
     response.view = 'generic.' + request.extension
-    #@decora('Bot Chat Center')
+    @decora('Bot Chat Center')
     def POST(token,id,owner,key,value):
         borrar=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_owner==owner)&
            (db.bot_storage.storage_key==key)&(db.bot_storage.storage_value==value)).delete()
         return dict(data =borrar)
     return locals()
+
 @cors_allow
 @request.restful()
-def insert_variable():
+def update_variable():
     response.view = 'generic.' + request.extension
-    #@decora('Bot Chat Center')
+    @decora('Bot Chat Center')
     def POST(token,id,owner,key,value):
-        seleccion=db.bot_storage.insert(bot_id=id,storage_owner=owner,storage_key=key,storage_value=value)
+        #seleccion=db((db.bot_storage.bot_id==id)&(db.bot_storage.storage_owner==owner)& (db.bot_storage.storage_key==key)).update(storage_value=value)
+        seleccion=db.bot_storage.update_or_insert((db.bot_storage.bot_id==id)&(db.bot_storage.storage_owner == owner)&
+                                                    (db.bot_storage.storage_key ==key),
+                                                  storage_owner = owner,
+                                                  bot_id = id,
+                                                  storage_key=key,
+                                                  storage_value=value)
         return dict(data =seleccion)
     return locals()
